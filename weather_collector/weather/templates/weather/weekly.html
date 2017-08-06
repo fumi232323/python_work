@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}週間天気{% endblock %}
+{% block content %}
+<h1>週間天気</h1>
+{% for channel_name, weekly_weather_per_channel in all_weekly_weather.items %}
+<h2>{{ channel_name }}</h2>
+<table>
+    <thead>
+        <tr>
+            <th>日付&nbsp;&nbsp;</th>
+            <th>天気&nbsp;&nbsp;</th>
+            <th>最高気温（℃）</th>
+            <th>最低気温（℃）</th>
+            <th>降水確率（％）</th>
+            <th>数えた</th>
+        </tr>
+    </thead>
+    <tbody>
+        {# 一覧用 #} {% for weather in weekly_weather_per_channel %}
+        <tr>
+            <td>
+                {% if weather.daily_weather_count == 0 %}
+                    {{ weather.date }}
+                {% else %}
+                    <a href="{% url 'weather:daily' weather_id=weather.id %}">{{ weather.date }}</a>
+                {% endif %}
+            </td>
+            <td>{{ weather.weather }}</td>
+            <td align=center>{{ weather.highest_temperatures }}</td>
+            <td align=center>{{ weather.lowest_temperatures }}</td>
+            <td align=center>{{ weather.chance_of_rain }}</td>
+            <td align=center>{{ weather.daily_weather_count }}</td>
+        </tr>
+        {% empty %} {# 天気予報がない場合 #}
+        <tr>
+            <td colspan="4">天気予報ないよ</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<br>
+{% endfor %}
+{% endblock %}

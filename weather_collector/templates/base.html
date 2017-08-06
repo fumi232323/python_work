@@ -1,0 +1,30 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>わたしのお天気 - {% block title %}{% endblock %}</title>
+    <link href="{% static 'css/main.css' %}" rel="stylesheet" type="text/css" />
+    <link href="//fonts.googleapis.com/earlyaccess/nicomoji.css" rel="stylesheet" />
+</head>
+
+<body>
+
+    {% block header %}
+    <div class="header">
+        <div class="wrapper">
+            <ul>
+                <li><a class="brand" href="{% url 'weather:select_area' %}">my weather</a></li>
+            </ul>
+        </div>
+    </div>
+    {% endblock %}
+
+    <div class="wrapper">
+        {% block content %} {% endblock %}
+    </div>
+
+</body>
+
+</html>

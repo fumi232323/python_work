@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block title %}天気予報{% endblock %}
+
+{% block content %}
+<h1>{{ weather.date }}の天気予報</h1>
+<h2>{{ weather.area.name }}&nbsp;by&nbsp;{{ weather.channel.name }}</h2>
+<table>
+    <thead>
+        <tr>
+            <th>時間</th>
+            <th>天気</th>
+            <th>気温（℃）</th>
+            <th>降水量（mm/h）</th>
+            <th>風向</th>
+            <th>風速（m/s）</th>
+        </tr>
+    </thead>
+    <tbody>
+        {# 一覧用 #}
+        {% for hourly_weather in daily_weather %}
+        <tr>
+            <td>{{ hourly_weather.time }}</td>
+            <td>{{ hourly_weather.weather }}</td>
+            <td>{{ hourly_weather.temperatures }}</td>
+            <td>{{ hourly_weather.precipitation }}</td>
+            <td>{{ hourly_weather.wind_direction }}</td>
+            <td>{{ hourly_weather.wind_speed }}</td>
+        </tr>
+        {% empty %} {# 天気予報がない場合 #}
+        <tr>
+            <td colspan="4">天気予報ないよ</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p>
+<a href="{% url 'weather:weekly' area_id=weather.area.id %}">{{ weather.area.name }}の週間天気に戻る</a>
+</p>
+{% endblock %}

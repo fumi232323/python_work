@@ -1,0 +1,169 @@
+body {
+    color: #333;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    box-shadow: 6px 6px 4px 0px rgba(0, 0, 0, 0.25);
+}
+
+table>tbody>tr {
+    height: 52px;
+    border-bottom: solid 1px #eee;
+}
+
+table>tbody>tr:nth-child(even) {
+    background-color: #f9fcff;
+}
+
+th {
+    padding: 8px;
+    color: white;
+    background-color: #CC0000;
+}
+
+td {
+    padding: 4px 8px;
+}
+
+label {
+    font-weight: 600;
+}
+
+form>ul>li {
+    list-style: none;
+    margin: 8px 0;
+}
+
+form>ul>li>label {
+    margin-right: 8px;
+}
+
+form>ul>li:not(:first-child) {
+    border-top: solid 1px #eee;
+    padding-top: 8px;
+}
+
+input[type="submit"] {
+    padding: 15px 40px;
+    font-size: 1.2em;
+    color: white;
+    background-color: #CC0000;
+    border-style: none;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: none;
+    /* border: 1px solid #f98e5b; */
+    background: #f98e5b;
+}
+
+input:not([type="submit"]),
+textarea {
+    border-radius: 2px;
+    border: solid 1px #bbb;
+    padding: 4px;
+}
+
+h1 {
+    font-family: "Nixie One", cursive;
+    font-size: 38px;
+    padding-bottom: 8px;
+    margin: 38px 0;
+}
+
+h2 {
+    font-family: "Nixie One", cursive;
+    font-size: 24px;
+    padding-bottom: 2px;
+    margin: 24px 0;
+    border-bottom: solid 2px #f98e5b;
+}
+
+.errorlist {
+    color: #e64040;
+}
+
+
+/* Base Classes */
+
+.wrapper {
+    margin: 0 auto;
+    max-width: 960px;
+    flex: 1;
+}
+
+
+/* Header */
+
+.header {
+    margin-bottom: 16px;
+    padding: 8px 0;
+    background: linear-gradient(#f98e5b, #CC0000);
+    /* border-bottom: solid 1px #ddd; */
+}
+
+.header a {
+    text-decoration: none;
+    color: white;
+}
+
+.header a.brand {
+    font-family: "Nixie One", cursive;
+    font-size: 32px;
+}
+
+.header>.wrapper {
+    display: flex;
+    flex-flow: row;
+    justify-content: space-between;
+}
+
+.header ul {
+    display: flex;
+    flex-flow: row;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+}
+
+.header ul>li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.header ul>li:not(:last-child) {
+    margin-right: 12px;
+}
+
+.header .brand {
+    font-family: "Nixie One", cursive;
+}
+
+
+/* Paginator */
+
+.paginator {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: center;
+    margin: 30px 0;
+}
+
+.paginator>span.current-page {
+    margin: 0 16px;
+    border: solid 1px #ddd;
+    border-radius: 4px;
+    padding: 4px 12px;
+}

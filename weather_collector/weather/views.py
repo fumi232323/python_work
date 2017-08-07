@@ -10,11 +10,14 @@ import csv
 from .models import  Area, Channel, Weather, HourlyWeather
 from .forms import AreaChoiceForm
 
-# TODO：
-#   ・サイト(Channel)登録時に両方URLを登録させる機能をつくる。
+# TODO:
+#   * サイト(Channel)登録時に両方URLを登録させる機能をつくる。
 #   　∟登録させる項目: AreaとChannel(サイト)名と週間天気のURL、詳細天気のURL
-#   ・過去天気表示ページも作りたい
-#   ・コードチェックのやつ、PEP8だったか、flask8だったかいうやつやらんと。
+#   * 詳細天気取得のスパイダー
+#   * 過去天気表示ページも作りたい
+#   * コードチェックのやつ、PEP8だったか、flask8だったかいうやつやらんと。
+#   * ログ出力
+#   * テスト
 
 def weekly_weather(request, area_id):
     """
@@ -102,7 +105,9 @@ def __execute_scrapy(channels):
     指定された天気予報サイトから天気予報を取得し、CSV出力する。
     
     @param channels : QuerySet<Channel>。 Channelモデルのクエリセット。
-    @return         : List<String>。CSVファイル名のリスト。
+    @return         : Dict{Channel.weather_type:[file_names]}。
+                      KeyにChannel.weather_type、Valueに出力した天気予報CSVファイル名(拡張子は不要)のリストを持つ辞書。
+                        例) {Channel.TYPE_WEEKLY:['abc', 'ddd']}
     """
     
     SPIDER_NAMES = {
@@ -111,23 +116,29 @@ def __execute_scrapy(channels):
         1:('weathernews_weekly_weather', 'weathernews_daily_weather'),
         2:('tenkijp_weekly_weather', 'tenkijp_daily_weather'),
     }
-    FILE_EXP = '.csv'
     
-    cmd_string = 'scrapy crawl {spider} -a area_id={area_id} -a channel_id={channel_id} -a suffix={suffix}'
-    suffix = '_' + datetime.now().strftime('%Y%m%d%H%M%S%f')
-    file_names = []
+    cmd_string = 'scrapy crawl {spider} -a area_id={area_id} -a channel_id={channel_id} -a file_name_suffix={file_name_suffix}'
+    
+    weekly_file_names = []
+    daily_file_names = []
+    weather_file_names = {
+        Channel.TYPE_WEEKLY: weekly_file_names,
+        Channel.TYPE_DAILY: daily_file_names,
+    }
+    
+    file_name_suffix = '_' + datetime.now().strftime('%Y%m%d%H%M%S%f')
+    
     for channel in channels:
         spider = SPIDER_NAMES[channel.name][channel.weather_type]
-        print('★')
-        print(spider)
         cmd = cmd_string.format(
                                 spider=spider,
                                 area_id=channel.area.id, 
                                 channel_id=channel.id,
-                                suffix=suffix
+                                file_name_suffix=file_name_suffix
                                ).split(' ')
         print('★')
         print(cmd)
+        # TODO: 実行したコマンドをログ出力
         try:
             proc = subprocess.Popen(cmd, cwd='../weatherscrapy')
         except OSError:
@@ -138,29 +149,34 @@ def __execute_scrapy(channels):
             pass
         else:
             # TODO: ひとまず呼び出しは正常終了の旨をログ出力
-            file_names.append(spider + suffix + FILE_EXP)
+            weather_file_names[channel.weather_type].append(spider + file_name_suffix)
             
         # weatherscrapy実行完了をしばし待つ。
         while proc.poll() is None:
             continue
         
-    return file_names
+    return weather_file_names
 
-def __register_weather(area_id, file_names):
+def __register_weather(area_id, weather_file_names):
     """
     天気予報永続化処理。
     CSV出力された天気予報を読み込み、DBへ登録する。
     
-    @param area_id      : int。 Areaモデルのid。選択した天気予報取得対象の地域を表すモデルArea.id。
-    @param file_names   : List<String>。読み込み対象の拡張子付CSVファイル名のリスト。
-                          例) ['abc.csv', 'ddd.csv']
+    @param area_id  : int。 Areaモデルのid。選択した天気予報取得対象の地域を表すモデルArea.id。
+    @param weather_file_names 
+                    : Dict{Channel.weather_type:[file_names]}。
+                      KeyにChannel.weather_type、Valueに読み込み対象のCSVファイル名(拡張子は不要)のリストを持つ辞書。
+                        例) {Channel.TYPE_WEEKLY:['abc', 'ddd']}
     """ 
+    weather_file_path_string = '../weatherscrapy/data/weather/{}.csv'
+    
     # 登録前に、既存データはdeleteしておく。
     area = Area.objects.get(id=area_id)
     Weather.objects.filter(area=area).delete()
 
-    for file_name in file_names:
-        file_path = '../weatherscrapy/data/weather/{}'.format(file_name)
+    # まずは、週間天気予報の登録。
+    for file_name in weather_file_names[Channel.TYPE_WEEKLY]:
+        file_path = weather_file_path_string.format(file_name)
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
             header = next(reader)
@@ -180,7 +196,13 @@ def __register_weather(area_id, file_names):
                     weather=row[7],
                     wind_speed=None,
                 )
-                    
+                
+    # 次に、今日明日天気予報の登録。
+    # TODO: HourlyWeather時、Weatherがない子はHourlyWeatherの1レコード目をWeatherとして登録しておく。
+    # Yahoo天気とウェザーニューズは、今日天気=>降水量、週間天気=>降水確率、になるので注意
+    # 日本気象協会 tenki.jpとgoo天気は、今日天気=>降水確率、週間天気=>降水確率、になるので注意
+    
+    
 def select_area(request):
     """
     天気予報サイトにアクセスして、天気予報情報を取得する。
@@ -194,7 +216,6 @@ def select_area(request):
         form.is_valid()
         area_id = form.cleaned_data['selected_area'].id
         
-        # TODO: Channelに登録してある天気URL分天気を取得して、CSV出力。(weatherscrapyから読み込む用)
         channels = Channel.objects.filter(
                         area=area_id
                     ).order_by(

@@ -13,12 +13,13 @@ class Area(models.Model):
     
 class Channel(models.Model):
     """
-    天気予報サイト
+    天気予報サイトのURL。
     Area - Channel(サイト) - 週間or今日でユニーク。
         # ちなみに、
         # ウェザーニュース => https://weathernews.jp/onebox/35.864499/139.806766/temp=c&q=埼玉県越谷市
         # 日本気象協会 => https://tenki.jp/forecast/3/14/4310/11222/
         # ヤフー天気 => https://weather.yahoo.co.jp/weather/jp/11/4310/11222.html
+        # goo天気 => https://weather.goo.ne.jp/weather/division-1/110010/
     """
     
     TYPE_WEEKLY = 0
@@ -51,8 +52,11 @@ class Channel(models.Model):
 class Weather(models.Model):
     """
     1日分の天気予報。各天気予報はひとつのChannelに紐付く。
-    TODO: 表示用の、曜日つくる。
     """
+    WEEKDAY_JA = [
+        '月', '火', '水', '木', '金', '土', '日',
+    ]
+    
     area = models.ForeignKey(Area, on_delete=models.CASCADE)
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE)
     
@@ -67,7 +71,14 @@ class Weather(models.Model):
 
     def __str__(self):
         return self.area.name + '-' + self.date.strftime('%Y/%m/%d')
-
+    
+    def date_display(self):
+        return self.date.strftime('%m/%d')
+        # return self.date.strftime('%m/%d (%a)')
+    
+    def weekday_display(self):
+        return self.WEEKDAY_JA[self.date.weekday()]
+    
 class HourlyWeather(models.Model):
     """
     n時間分の天気予報。各天気予報はひとつのWeatherに紐付く。
@@ -77,7 +88,9 @@ class HourlyWeather(models.Model):
     time = models.TimeField('時', default=now)
     weather = models.CharField('天気', max_length=200)
     temperatures = models.IntegerField('気温（℃）', default=20)
+    # 湿度をタスこと humidity
     precipitation = models.PositiveIntegerField('降水量（mm/h）', default=0)
+    # 降水確率を足すことchance_of_rain null可
     wind_direction = models.CharField('風向', max_length=200, blank=True)
     wind_speed = models.PositiveIntegerField('風速（m/s）', default=0, blank=True)
     

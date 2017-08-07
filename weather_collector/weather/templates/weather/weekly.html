@@ -20,7 +20,7 @@
         <tr>
             <td>
                 {% if weather.daily_weather_count == 0 %}
-                    {{ weather.date }}
+                    {{ weather.date_display }}&nbsp;({{ weather.weekday_display }})
                 {% else %}
                     <a href="{% url 'weather:daily' weather_id=weather.id %}">{{ weather.date }}</a>
                 {% endif %}

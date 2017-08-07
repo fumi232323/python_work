@@ -20,11 +20,11 @@ class YahooWeeklyWeatherSpider(scrapy.Spider):
     channel = 0
     now = datetime.now()
     
-    def __init__(self, area_id, channel_id, suffix, *args, **kwargs):
+    def __init__(self, area_id, channel_id, file_name_suffix, *args, **kwargs):
         super(YahooWeeklyWeatherSpider, self).__init__(*args, **kwargs)
         self.area = area_id
         self.channel = channel_id
-        self.output_file_name += suffix
+        self.output_file_name += file_name_suffix
         
         with open(self.urls_file_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)

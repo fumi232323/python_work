@@ -112,6 +112,7 @@ class HourlyWeather(models.Model):
     time = models.TimeField('時', default=now)
     weather = models.CharField('天気', max_length=200)
     temperatures = models.IntegerField('気温（℃）', default=20)
+    # TODO: humidityをPositiveIntegerFieldに変えないと
     humidity = models.IntegerField('湿度（％）', default=50)
     precipitation = models.PositiveIntegerField(
                 '降水量（mm/h）',

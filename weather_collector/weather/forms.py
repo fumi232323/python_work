@@ -2,8 +2,9 @@ from django import forms
 
 from .models import Area
 
+
 class AreaChoiceForm(forms.Form):
-    
+
     queryset = Area.objects.order_by(
                             '-id'
                         )

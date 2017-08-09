@@ -4,12 +4,12 @@
 <h1>地域を選択</h1>
   <form method="post">
   {% csrf_token %}
-
     {{ form.as_p }}
     <p>
-        <input type="submit" value="天気予報を取得" />
+        <input type="submit" value="天気予報を取得" name="scrapy_weather" />
     </p>
-  </ul>
-      
+    <p>
+        <input type="submit" value="週間天気予報を表示" name="display_weekly" />
+    </p>
   </form>
 {% endblock %}

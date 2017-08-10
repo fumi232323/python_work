@@ -39,7 +39,8 @@ class YahooWeeklyWeatherSpider(scrapy.Spider):
         # xpathはこれがわかりやすい
         #   => http://yakinikunotare.boo.jp/orebase/index.php?XML%2FXPath%2FXPath%A4%CE%BD%F1%A4%AD%CA%FD
         # 注意 : tbodyは要らない模様。
-
+        
+        # 週間天気
         dates = response.xpath('//div[@id="yjw_week"]/table[1]/tr[1]/td')
         weatheres = response.xpath('//div[@id="yjw_week"]/table[1]/tr[2]/td')
         temperatures = response.xpath('//div[@id="yjw_week"]/table[1]/tr[3]/td')

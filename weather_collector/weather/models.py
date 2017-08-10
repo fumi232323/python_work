@@ -19,8 +19,10 @@ class Channel(models.Model):
     各天気予報サイトのURLは、ひとつのAreaに紐づく。
         # ちなみに、
         # ウェザーニュース
-        => https://weathernews.jp/onebox/35.864499/139.806766/temp=c&q=埼玉県越谷市
-        # 日本気象協会 => https://tenki.jp/forecast/3/14/4310/11222/
+        # => https://weathernews.jp/onebox/35.864499/139.806766/temp=c&q=埼玉県越谷市
+        # 日本気象協会 
+        # => https://tenki.jp/forecast/3/14/4310/11222/
+        # => https://tenki.jp/forecast/3/14/4310/11222/1hour.html
         # ヤフー天気 => https://weather.yahoo.co.jp/weather/jp/11/4310/11222.html
         # goo天気 => https://weather.goo.ne.jp/weather/address/11222/
     """
@@ -73,7 +75,6 @@ class Weather(models.Model):
         '月', '火', '水', '木', '金', '土', '日',
     ]
 
-    # area = models.ForeignKey(Area, on_delete=models.CASCADE)
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE)
 
     date = models.DateField('日付', default=now)
@@ -107,13 +108,14 @@ class HourlyWeather(models.Model):
 
     各n時間分の天気予報はひとつのWeatherに紐付く。
     """
+    # やっぱりchannelは必要なので、足す
+    channel = models.ForeignKey(Channel, on_delete=models.CASCADE)
     date = models.ForeignKey(Weather, on_delete=models.CASCADE)
 
     time = models.TimeField('時', default=now)
     weather = models.CharField('天気', max_length=200)
     temperatures = models.IntegerField('気温（℃）', default=20)
-    # TODO: humidityをPositiveIntegerFieldに変えないと
-    humidity = models.IntegerField('湿度（％）', default=50)
+    humidity = models.PositiveIntegerField('湿度（％）', default=50)
     precipitation = models.PositiveIntegerField(
                 '降水量（mm/h）',
                 default=0,

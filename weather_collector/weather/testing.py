@@ -63,6 +63,8 @@ def factory_hourlyweather(**kwargs):
         'wind_speed': 1,
     }
     data.update(kwargs)
+    if 'channel' not in data:
+        data['channel'] = factory_channel()
     if 'date' not in data:
         data['date'] = factory_weather()
 

@@ -132,10 +132,9 @@ def register_scrapped_weather(area_id, weather_file_names):
                 # 天気予報部分が「---」の行はDB登録する必要がないので、スキップ。
                 if not row[1].isdigit():
                     continue
-                # TODO: ほんとはファイルごとに1回でいいんだけど・・・
-                channel = Channel.objects.get(id=row[2])
+
                 Weather.objects.create(
-                    channel=channel,
+                    channel=Channel.objects.get(id=row[2]),
                     date=row[3],
                     weather=row[6],
                     highest_temperatures=row[4],
@@ -163,17 +162,60 @@ def register_scrapped_weather(area_id, weather_file_names):
             logger.debug('Opened csvfile: %s', file_path)
             reader = csv.reader(csvfile)
             next(reader)
+
             for row in reader:
-                # TODO: ほんとはファイルごとに1回でいいんだけど・・・
-                weather = Weather.objects.get(date=row[3])
+
+                hourlyweather_channel=Channel.objects.get(id=row[2])
+                
+                # Weatherが存在しない場合は、HourlyWeather用の0時の天気で登録する
+                weather_channel=Channel.objects.get(
+                    area=hourlyweather_channel.area,
+                    weather_type=Channel.TYPE_WEEKLY,
+                    name=hourlyweather_channel.name
+                )
+
+                # TODO: 本当は、
+                # * 最高気温、最低気温以外は現在時刻に一番近いレコードを登録したい
+                # * chance_of_rain降水確率がある場合は、chance_of_rainを登録したい
+                weather, created = Weather.objects.get_or_create(
+                    channel=weather_channel,
+                    date=row[3],
+                    defaults={
+                        'date': row[3],
+                        'weather': row[8],
+                        'highest_temperatures': row[6],
+                        'lowest_temperatures': row[6],
+                        'chance_of_rain': 999, # 999は画面表示時に'---'に置換
+                        'wind_speed': row[10],
+                    },
+                )
+
+                # とりあえず0時の天気を入れといて、ループしながら比較して、アップデートするのはどうだろう。
+                # 性能悪くなっちゃうかな？
+                if int(weather.highest_temperatures) < int(row[6]):
+                    weather.highest_temperatures = row[6]
+                    weather.save()
+                if int(weather.lowest_temperatures) > int(row[6]):
+                    weather.lowest_temperatures = row[6]
+                    weather.save()
+
+                # 降水量と降水確率はどちらか一方しかscrapyしないので、空のほうはNoneで登録する
+                precipitation = row[5]
+                chance_of_rain = row[1]
+                if precipitation == '':
+                    precipitation = None
+                else:
+                    chance_of_rain = None
+
                 HourlyWeather.objects.create(
+                    channel=hourlyweather_channel,
                     date=weather,
                     time=row[7],
                     weather=row[8],
                     temperatures=row[6],
                     humidity=row[4],
-                    precipitation=row[5],
-                    chance_of_rain=row[1],
+                    precipitation=precipitation,
+                    chance_of_rain=chance_of_rain,
                     wind_direction=row[9],
                     wind_speed=row[10],
                 )

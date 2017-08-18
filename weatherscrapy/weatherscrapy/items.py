@@ -30,7 +30,7 @@ class HourlyWeatherscrapyItem(scrapy.Item):
     temperatures = scrapy.Field()
     humidity = scrapy.Field()
     precipitation = scrapy.Field()
-    chance_of_rains = scrapy.Field()
+    chance_of_rain = scrapy.Field()
     wind_direction = scrapy.Field()
     wind_speed = scrapy.Field()
 

@@ -118,7 +118,7 @@ class YahooDailyWeatherSpider(scrapy.Spider):
 
                 item['date'] = date(self.now.year, int(date_text_list[0]), int(date_text_list[1]))
                 time_text_list = time_text.replace('時', ' ').split()
-                item['time'] = time(int(time_text_list[0]), 0)
+                item['time'] = time(int(time_text_list[0]), 0, 0, 0)
                 item['weather'] = weather_text
                 item['temperatures'] = temperatures_text
                 item['humidity'] = humidity_text

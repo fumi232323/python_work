@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}週間天気{% endblock %}
 {% block content %}
-<h1>週間天気</h1>
+<h1>{{ area.name }}の週間天気予報</h1>
 {% for channel_name, weekly_weather_per_channel in all_weekly_weather.items %}
 <h2>{{ channel_name }}</h2>
 <table>
@@ -22,13 +22,17 @@
                 {% if weather.daily_weather_count == 0 %}
                     {{ weather.date_display }}&nbsp;({{ weather.weekday_display }})
                 {% else %}
-                    <a href="{% url 'weather:daily' weather_id=weather.id %}">{{ weather.date }}</a>
+                    <a href="{% url 'weather:daily' weather_id=weather.id %}">
+                        {{ weather.date_display }}&nbsp;({{ weather.weekday_display }})
+                    </a>
                 {% endif %}
             </td>
             <td>{{ weather.weather }}</td>
             <td align=center>{{ weather.highest_temperatures }}</td>
             <td align=center>{{ weather.lowest_temperatures }}</td>
-            <td align=center>{{ weather.chance_of_rain }}</td>
+            <td align=center>
+                {{ weather.chance_of_rain_display }}
+            </td>
             <td align=center>{{ weather.daily_weather_count }}</td>
         </tr>
         {% empty %} {# 天気予報がない場合 #}

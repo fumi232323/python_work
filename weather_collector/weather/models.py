@@ -18,12 +18,12 @@ class Channel(models.Model):
     
     各天気予報サイトのURLは、ひとつのAreaに紐づく。
         # ちなみに、
-        # ウェザーニュース
+        # weathernews
         # => https://weathernews.jp/onebox/35.864499/139.806766/temp=c&q=埼玉県越谷市
-        # 日本気象協会 
+        # 日本気象協会
         # => https://tenki.jp/forecast/3/14/4310/11222/
-        # => https://tenki.jp/forecast/3/14/4310/11222/1hour.html
-        # ヤフー天気 => https://weather.yahoo.co.jp/weather/jp/11/4310/11222.html
+        # => https://tenki.jp/forecast/3/14/4310/11222/10days.html
+        # Yahoo天気 => https://weather.yahoo.co.jp/weather/jp/11/4310/11222.html
         # goo天気 => https://weather.goo.ne.jp/weather/address/11222/
     """
 
@@ -101,6 +101,11 @@ class Weather(models.Model):
     def weekday_display(self):
         return self.WEEKDAY_JA[self.date.weekday()]
 
+    def chance_of_rain_display(self):
+        if self.chance_of_rain == 999:
+            return '---'
+        else:
+            return self.chance_of_rain
 
 class HourlyWeather(models.Model):
     """
@@ -114,24 +119,21 @@ class HourlyWeather(models.Model):
 
     time = models.TimeField('時', default=now)
     weather = models.CharField('天気', max_length=200)
-    temperatures = models.IntegerField('気温（℃）', default=20)
+    temperatures = models.DecimalField('気温（℃）', max_digits=4, decimal_places=1, default=20)
     humidity = models.PositiveIntegerField('湿度（％）', default=50)
     precipitation = models.PositiveIntegerField(
                 '降水量（mm/h）',
-                default=0,
                 blank=True,
                 null=True
             )
     chance_of_rain = models.PositiveIntegerField(
                 '降水確率（％）',
-                default=0,
                 blank=True,
                 null=True
             )
     wind_direction = models.CharField('風向', max_length=200)
     wind_speed = models.PositiveIntegerField(
                 '風速（m/s）',
-                default=0,
                 blank=True,
                 null=True
             )
@@ -141,3 +143,10 @@ class HourlyWeather(models.Model):
     def __str__(self):
         return self.date.date.strftime('%Y/%m/%d') + \
                 self.time.strftime('%H/%M/%S')
+
+    def chance_of_rain_display(self):
+        worthless_values = [999, '', None]
+        if self.chance_of_rain in worthless_values:
+            return('---')
+        else:
+            return self.chance_of_rain

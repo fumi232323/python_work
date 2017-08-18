@@ -4,7 +4,7 @@ from django.shortcuts import redirect  # , get_object_or_404
 import logging
 from datetime import date
 
-from .models import Channel, Weather, HourlyWeather
+from .models import Area, Channel, Weather, HourlyWeather
 from .forms import AreaChoiceForm
 from .import scrapyutils
 
@@ -12,7 +12,7 @@ from .import scrapyutils
 #   * サイト(Channel)登録時に両方URLを登録させる機能をつくる。
 #   　∟登録させる項目: AreaとChannel(サイト)名と週間天気のURL、詳細天気のURL
 #   * 過去天気表示ページも作りたい
-#   * テスト8/9～
+#   * テストの残りとエラー処理
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,7 @@ def weekly_weather(request, area_id):
     # 時刻は00:00:00で取得
     today = date.today()
 
+    area = Area.objects.get(id=area_id)
     channels = Channel.objects.filter(
                             area_id=area_id,
                             weather_type=Channel.TYPE_WEEKLY
@@ -55,7 +56,10 @@ def weekly_weather(request, area_id):
     return TemplateResponse(
                                 request,
                                 'weather/weekly.html',
-                                {'all_weekly_weather': all_weekly_weather}
+                                {
+                                    'area': area,
+                                    'all_weekly_weather': all_weekly_weather
+                                }
                             )
 
 
@@ -71,7 +75,6 @@ def daily_weather(request, weather_id):
                             'time'
                         )
     weather = Weather.objects.select_related(
-                            'area',
                             'channel'
                         ).get(
                             id=weather_id

@@ -3,8 +3,8 @@
 {% block title %}天気予報{% endblock %}
 
 {% block content %}
-<h1>{{ weather.date }}の天気予報</h1>
-<h2>{{ weather.area.name }}&nbsp;by&nbsp;{{ weather.channel.name }}</h2>
+<h1>{{ weather.channel.area.name }}*:;;;:*{{ weather.date }}の天気予報</h1>
+<h2>{{ weather.channel.get_name_display }}</h2>
 <table>
     <thead>
         <tr>
@@ -22,10 +22,10 @@
         <tr>
             <td>{{ hourly_weather.time }}</td>
             <td>{{ hourly_weather.weather }}</td>
-            <td>{{ hourly_weather.temperatures }}</td>
-            <td>{{ hourly_weather.precipitation }}</td>
-            <td>{{ hourly_weather.wind_direction }}</td>
-            <td>{{ hourly_weather.wind_speed }}</td>
+            <td align=center>{{ hourly_weather.temperatures }}</td>
+            <td align=center>{{ hourly_weather.precipitation }}</td>
+            <td align=center>{{ hourly_weather.wind_direction }}</td>
+            <td align=center>{{ hourly_weather.wind_speed }}</td>
         </tr>
         {% empty %} {# 天気予報がない場合 #}
         <tr>
@@ -35,6 +35,6 @@
     </tbody>
 </table>
 <p>
-<a href="{% url 'weather:weekly' area_id=weather.area.id %}">{{ weather.area.name }}の週間天気に戻る</a>
+<a href="{% url 'weather:weekly' area_id=weather.channel.area.id %}">{{ weather.channel.area.name }}の週間天気に戻る</a>
 </p>
 {% endblock %}

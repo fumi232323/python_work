@@ -124,8 +124,7 @@ def register_scrapped_weather(area_id, weather_file_names):
     # まずは、週間天気予報の登録。
     _register_to_weather(weather_file_names)
 
-    # 週間天気のURLと今日明日天気のURLは必ずセットで登録させるようにする予定だけど、
-    # 今はセット登録画面を作ってないため、今日明日天気URLがない場合もあるので、なければリターン。
+    # 今日明日天気URLがなければリターン。
     if Channel.TYPE_DAILY not in weather_file_names:
         return
 

@@ -38,9 +38,7 @@
     </tbody>
 </table>
 <br>
-<form  method="get" action="{% url 'channel:register' %}">
-    <p>
-        <input type="submit" value="チャンネルを新規登録" />
-    </p>
-</form>
+<p>
+    <a href="{% url 'channel:register' %}" class="button">チャンネルを新規登録</a>
+</p>
 {% endblock %}

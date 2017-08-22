@@ -2,19 +2,24 @@
 {% block title %}チャンネル登録{% endblock %}
 {% block content %}
 <h1>チャンネルを新規登録</h1>
-  <form method="post">
-    {% csrf_token %}
+    <form method="post">
+        {% csrf_token %}
         {% if error %}
             <span class="errorlist">
                 {{ error }}
             </span>
         {% endif %}
-      <table class="edit-ch">
-        {{ form.as_table }}
-      </table>
-    <br>
-    <p>
-        <input type="submit" value="登録する" />
-    </p>
-  </form>
+
+        <table class="edit-ch">
+            {{ form.as_table }}
+        </table>
+        <br>
+        <p>
+            <input type="submit" value="確認する" />
+            <a href="{% url 'channel:area' %}" class="button-orange right">地域を登録する</a>
+        </p>
+        <p>
+            
+        </p>
+    </form>
 {% endblock %}

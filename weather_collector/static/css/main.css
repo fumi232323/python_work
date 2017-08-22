@@ -57,7 +57,8 @@ input[type="submit"] {
     border-style: none;
 }
 
-input[type="url"] {
+input[type="url"],
+input[type="text"] {
     border-radius: 2px;
     border: solid 1px #bbb;
     padding: 10px;
@@ -188,4 +189,27 @@ h2 {
     background-color: #CC0000;
     white-space: nowrap;
     width: 30%;
+}
+
+a.button {
+    padding: 15px 40px;
+    font-size: 1.2em;
+    color: white;
+    background-color: #CC0000;
+    border: none;
+    text-decoration: none;
+}
+
+a.button-orange {
+    padding: 15px 40px;
+    font-size: 1.2em;
+    color: white;
+    background-color: #f98e5b;
+    border: none;
+    text-decoration: none;
+}
+
+.right {
+    float: right;
+    /* 後続する要素がある場合はstyle="clear: right" */
 }

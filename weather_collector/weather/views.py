@@ -9,6 +9,8 @@ from .forms import AreaChoiceForm
 from .import scrapyutils
 
 # TODO:
+#   * チャンネルが存在しない場合は、リターン。週間天気予報画面にチャンネル登録を促すメッセージを表示。
+#   メッセージフレームワークhttps://docs.djangoproject.com/ja/1.10/ref/contrib/messages/
 #   * テストの残りとエラー処理
 logger = logging.getLogger(__name__)
 
@@ -100,37 +102,43 @@ def select_area(request):
     if request.method == 'POST':
         # 選択された地域を取得
         form = AreaChoiceForm(data=request.POST)
-        form.is_valid()
-        area_id = form.cleaned_data['selected_area'].id
-        logger.info('area_id: %d was selected.', area_id)
+        if form.is_valid():
+            area_id = form.cleaned_data['selected_area'].id
+            logger.info('area_id: %d was selected.', area_id)
 
-        if 'scrapy_weather' in request.POST:
-            # 「天気予報を取得」ボタンを押下時処理。
-            logger.info('"scrapy_weather" was requested.')
+            if 'scrapy_weather' in request.POST:
+                # 「天気予報を取得」ボタンを押下時処理。
+                logger.info('"scrapy_weather" was requested.')
 
-            channels = Channel.objects.filter(
-                            area=area_id
-                        ).order_by(
-                            'id'
-                        )
-            # 天気予報取得対象URL、CSV出力
-            scrapyutils.output_target_urls_to_csv(channels)
+                channels = Channel.objects.filter(
+                                area=area_id
+                            ).order_by(
+                                'id'
+                            )
+                # TODO: チャンネルが存在しない場合は、リターン。週間天気予報画面にチャンネル登録を促すメッセージを表示。
 
-            # weatherscrapy実行
-            file_names = scrapyutils.execute_scrapy(channels)
+                # 天気予報取得対象URL、CSV出力
+                scrapyutils.output_target_urls_to_csv(channels)
 
-            # CSV出力された天気予報をDBへ登録する。
-            scrapyutils.register_scrapped_weather(area_id, file_names)
+                # weatherscrapy実行
+                file_names = scrapyutils.execute_scrapy(channels)
 
-        logger.info('Redirect "%s".', 'weather:weekly')
-        logger.info('***** Ended %s. *****', 'select_area')
+                # CSV出力された天気予報をDBへ登録する。
+                scrapyutils.register_scrapped_weather(area_id, file_names)
 
-        return redirect('weather:weekly', area_id=area_id)
+            # 「天気予報を取得」ボタン、「週間天気予報を表示」ボタンともに週間天気予表示viewにリダイレクト
+            logger.info('Redirect "%s".', 'weather:weekly')
+            logger.info('***** Ended %s. *****', 'select_area')
+
+            return redirect('weather:weekly', area_id=area_id)
+        else:
+            # バリデーションエラー時は、『お天気エリア選択画面』に戻る
+            logger.info('ValidationError "%s".', 'AreaChoiceForm')
     else:
         # 『お天気エリア選択画面』初期表示処理
         form = AreaChoiceForm()
 
-        logger.info('Response template "%s".', 'weather/area.html')
-        logger.info('***** Ended %s. *****', 'select_area')
+    logger.info('Response template "%s".', 'weather/select_area.html')
+    logger.info('***** Ended %s. *****', 'select_area')
 
-        return TemplateResponse(request, 'weather/area.html', {'form': form})
+    return TemplateResponse(request, 'weather/select_area.html', {'form': form})

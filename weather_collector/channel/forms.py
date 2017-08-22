@@ -8,15 +8,19 @@ class ChannelRegistrationForm(forms.Form):
     """
     チャンネル登録用のフォーム
     """
-    queryset = Area.objects.order_by('id')
+    area_queryset = Area.objects.order_by('id')
+    list_channel_choices = list(Channel.CHANNEL_CHOICES)
+    list_channel_choices.insert(0, ('', '---------'))
 
-    area = forms.ModelChoiceField(label='地域', queryset=queryset)
-    channel = forms.ChoiceField(label='チャンネル', choices=Channel.CHANNEL_CHOICES)
+    area = forms.ModelChoiceField(label='地域', queryset=area_queryset)
+    channel = forms.ChoiceField(label='チャンネル', choices=list_channel_choices)
 
     weather_type_weekly_url = forms.URLField(max_length=255, label='週間天気予報のURL')
     weather_type_daily_url = forms.URLField(max_length=255, label='今日の天気予報のURL')
 
     def clean(self):
+        # 業務エラーチェック
+        # ここ（Form）でやってよいものか悩む・・・viewのほうがよいのかな・・・
         cleaned_data = super(ChannelRegistrationForm, self).clean()
         area = cleaned_data.get("area")
         channel = cleaned_data.get("channel")
@@ -48,3 +52,14 @@ class ChannelEditForm(forms.ModelForm):
         labels = {
             'url': _('URL'),
         }
+
+
+class AreaRegistrationForm(forms.ModelForm):
+    """
+    チャンネル変更用のフォーム
+    """
+    class Meta:
+        model = Area
+        fields = [
+            'name',
+        ]

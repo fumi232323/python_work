@@ -4,6 +4,11 @@
 <h1>地域を選択</h1>
   <form method="post">
   {% csrf_token %}
+    {% if error %}
+        <span class="errorlist">
+            {{ error }}
+        </span>
+    {% endif %}
     {{ form.as_p }}
     <p>
         <input type="submit" value="天気予報を取得" name="scrapy_weather" />

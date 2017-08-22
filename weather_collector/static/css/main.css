@@ -24,6 +24,7 @@ th {
     padding: 8px;
     color: white;
     background-color: #CC0000;
+    white-space: nowrap;
 }
 
 td {
@@ -56,6 +57,13 @@ input[type="submit"] {
     border-style: none;
 }
 
+input[type="url"] {
+    border-radius: 2px;
+    border: solid 1px #bbb;
+    padding: 10px;
+    width:  95%;
+}
+
 select {
     width: 100%;
     padding: 10px;
@@ -63,7 +71,6 @@ select {
     -moz-appearance: none;
     appearance: none;
     border: none;
-    /* border: 1px solid #f98e5b; */
     background: #f98e5b;
 }
 
@@ -91,6 +98,9 @@ h2 {
 
 .errorlist {
     color: #e64040;
+    font-size: 24px;
+    width: 100%;
+    margin-right: auto;
 }
 
 
@@ -166,4 +176,16 @@ h2 {
     border: solid 1px #ddd;
     border-radius: 4px;
     padding: 4px 12px;
+}
+
+.small {
+    font-size: small !important;
+}
+
+.edit-ch th {
+    padding: 8px;
+    color: white;
+    background-color: #CC0000;
+    white-space: nowrap;
+    width: 30%;
 }

@@ -6,7 +6,7 @@ class Area(models.Model):
     """
     天気予報の対象地域
     """
-    name = models.CharField(max_length=200)
+    name = models.CharField("地域", max_length=200)
 
     def __str__(self):
         return self.name
@@ -15,14 +15,14 @@ class Area(models.Model):
 class Channel(models.Model):
     """
     天気予報サイトのURL
-    
+
     各天気予報サイトのURLは、ひとつのAreaに紐づく。
         # ちなみに、
         # weathernews
         # => https://weathernews.jp/onebox/35.864499/139.806766/temp=c&q=埼玉県越谷市
         # 日本気象協会
         # => https://tenki.jp/forecast/3/14/4310/11222/
-        # => https://tenki.jp/forecast/3/14/4310/11222/10days.html
+        # => https://tenki.jp/forecast/3/14/4310/11222/1hour.html
         # Yahoo天気 => https://weather.yahoo.co.jp/weather/jp/11/4310/11222.html
         # goo天気 => https://weather.goo.ne.jp/weather/address/11222/
     """
@@ -45,19 +45,17 @@ class Channel(models.Model):
         (CHANNEL_TENKIJP, '日本気象協会 tenki.jp'),
     )
 
-    area = models.ForeignKey(Area, on_delete=models.CASCADE)
+    area = models.ForeignKey(Area, on_delete=models.CASCADE, )
 
     name = models.PositiveIntegerField(
-                "チャンネル名",
+                "チャンネル",
                 choices=CHANNEL_CHOICES,
-                default=CHANNEL_YAHOO
             )
     weather_type = models.PositiveIntegerField(
-                "お天気区分",
+                "予報タイプ",
                 choices=TYPE_CHOICES,
-                default=TYPE_WEEKLY
             )
-    url = models.CharField(max_length=1000)
+    url = models.URLField(max_length=1000)
 
     def __str__(self):
         return self.area.name + '-' + \
@@ -68,7 +66,7 @@ class Channel(models.Model):
 class Weather(models.Model):
     """
     1日分の天気予報
-    
+
     各1日分の天気予報はひとつのChannelに紐付く。
     """
     WEEKDAY_JA = [
@@ -106,6 +104,7 @@ class Weather(models.Model):
             return '---'
         else:
             return self.chance_of_rain
+
 
 class HourlyWeather(models.Model):
     """

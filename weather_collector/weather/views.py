@@ -9,11 +9,7 @@ from .forms import AreaChoiceForm
 from .import scrapyutils
 
 # TODO:
-#   * サイト(Channel)登録時に両方URLを登録させる機能をつくる。
-#   　∟登録させる項目: AreaとChannel(サイト)名と週間天気のURL、詳細天気のURL
-#   * 過去天気表示ページも作りたい
 #   * テストの残りとエラー処理
-
 logger = logging.getLogger(__name__)
 
 
@@ -106,6 +102,7 @@ def select_area(request):
         form = AreaChoiceForm(data=request.POST)
         form.is_valid()
         area_id = form.cleaned_data['selected_area'].id
+        logger.info('area_id: %d was selected.', area_id)
 
         if 'scrapy_weather' in request.POST:
             # 「天気予報を取得」ボタンを押下時処理。

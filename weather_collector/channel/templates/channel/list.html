@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}チャンネル{% endblock %}
+{% block content %}
+<h1>チャンネルリスト</h1>
+<table>
+    <thead>
+        <tr>
+            <th>地域</th>
+            <th>チャンネル</th>
+            <th>予報タイプ</th>
+            <th>URL</th>
+            <th>変更</th>
+            <th>削除</th>
+        </tr>
+    </thead>
+    <tbody>
+        {# 一覧用 #}
+        {% for channel in channels %}
+        <tr>
+            <td>{{ channel.area.name }}</td>
+            <td>{{ channel.get_name_display }}</td>
+            <td>{{ channel.get_weather_type_display }}</td>
+            <td width=120px>
+                <span class="small">{{ channel.url }}</span>
+            </td>
+            <td><a href="{% url 'channel:update' channel_id=channel.id %}">変更</a></td>
+            {% if channel.weather_type == channel.TYPE_WEEKLY %}
+                <td rowspan="2">
+                    <a href="{% url 'channel:delete' channel_id=channel.id %}">削除</a>
+                </td>
+            {% endif %}
+        </tr>
+        {% empty %} {# チャンネルがない場合 #}
+        <tr>
+            <td colspan="6">チャンネルないよ</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<br>
+<form  method="get" action="{% url 'channel:register' %}">
+    <p>
+        <input type="submit" value="チャンネルを新規登録" />
+    </p>
+</form>
+{% endblock %}

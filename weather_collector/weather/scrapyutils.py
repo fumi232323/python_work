@@ -150,6 +150,8 @@ def _register_to_weather(weather_file_names):
     """
     for file_name in weather_file_names[Channel.TYPE_WEEKLY]:
         file_path = weather_file_path_string.format(file_name)
+        created_count = 0
+
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
             reader = csv.reader(csvfile)
@@ -168,8 +170,9 @@ def _register_to_weather(weather_file_names):
                     chance_of_rain=row[1],
                     wind_speed=None,
                 )
+                created_count += 1
 
-        logger.info('Registered to Weather: "%s".', file_path)
+        logger.info('Registered "%s"records to Weather: "%s".', str(created_count), file_path)
 
 
 def _register_to_hourlyweather(weather_file_names):
@@ -181,6 +184,8 @@ def _register_to_hourlyweather(weather_file_names):
 
     for file_name in weather_file_names[Channel.TYPE_DAILY]:
         file_path = weather_file_path_string.format(file_name)
+        created_count = 0
+
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
             reader = csv.reader(csvfile)
@@ -214,12 +219,15 @@ def _register_to_hourlyweather(weather_file_names):
                     wind_direction=row[9],
                     wind_speed=row[10],
                 )
+                created_count += 1
 
-        logger.info('Registered to HourlyWeather: "%s".', file_path)
+        logger.info('Registered "%s"records to HourlyWeather: "%s".', str(created_count), file_path)
 
 
 def _add_weather_registration(hourlyweather_channel, row, found_close_time):
-    # 該当日付のWeatherが存在しない場合は、HourlyWeather用の天気予報データでWeatherを登録する
+    """
+    該当日付のWeatherが存在しない場合は、HourlyWeather用の天気予報データでWeatherを登録する
+    """
     weather_channel = Channel.objects.get(
         area=hourlyweather_channel.area,
         weather_type=Channel.TYPE_WEEKLY,
@@ -241,18 +249,23 @@ def _add_weather_registration(hourlyweather_channel, row, found_close_time):
     )
 
     # 必要に応じて、weatherを更新する。
-    if not created:
+    if created:
+        logger.info('added Weather: "%s".', str(row[3]),)
+    else:
         found_close_time = _update_weather_close_current_time(weather, row, found_close_time)
-        _update_temperatures_as_necessary(weather, row)
+        _update_temperatures_at_max_and_min(weather, row)
 
-    # Weatherの変更を保存
-    weather.save()
+        # Weatherの変更を保存
+        weather.save()
 
     return weather, found_close_time
 
 
 def _update_weather_close_current_time(weather, row, found_close_time):
-    # 最高気温、最低気温以外は現在時刻に一番近いレコードでアップデートする。
+    """
+    今日の天気に限り、最高気温、最低気温以外は現在時刻に一番近いレコードで更新する。
+    現在時刻に一番近いレコードを見つけた場合は、Trueを返す。
+    """
     current_row_datetime = datetime.strptime(row[3] + row[7], '%Y-%m-%d%H:%M:%S')
 
     if (get_now() <= current_row_datetime) and (not(found_close_time)):
@@ -264,8 +277,10 @@ def _update_weather_close_current_time(weather, row, found_close_time):
     return found_close_time
 
 
-def _update_temperatures_as_necessary(weather, row):
-    # 最高気温、最低気温は1日の内で最も高い気温と最も低い気温でアップデートする。
+def _update_temperatures_at_max_and_min(weather, row):
+    """
+    最高気温、最低気温は1日の内で最も高い気温と最も低い気温で更新する
+    """
     rounded_temperatures = _get_rounded_temperatures(row[6])
     if int(weather.highest_temperatures) < rounded_temperatures:
         weather.highest_temperatures = rounded_temperatures
@@ -274,22 +289,31 @@ def _update_temperatures_as_necessary(weather, row):
 
 
 def _get_rounded_temperatures(str_temperatures):
+    """
+    少数第一位を四捨五入して整数を返す
+    """
     return round(Decimal(str_temperatures))
 
 
-def _get_chance_of_rain(row_value):
-    if row_value == '':
+def _get_chance_of_rain(row_chance_of_rain):
+    """
+    降水確率が空の場合、999を返す
+    """
+    if row_chance_of_rain == '':
         chance_of_rain = 999  # 999は画面表示時に'---'に置換
     else:
-        chance_of_rain = row_value
+        chance_of_rain = row_chance_of_rain
     return chance_of_rain
 
 
-def _get_precipitation(row_value):
-    if row_value == '':
+def _get_precipitation(row_precipitation):
+    """
+    降水量が空の場合、999を返す
+    """
+    if row_precipitation == '':
         precipitation = 999  # 999は画面表示時に'---'に置換
     else:
-        precipitation = row_value
+        precipitation = row_precipitation
     return precipitation
 
 

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}チャンネル登録{% endblock %}
+{% block content %}
+<h1>チャンネルを新規登録</h1>
+  <form method="post">
+    {% csrf_token %}
+        {% if error %}
+            <span class="errorlist">
+                {{ error }}
+            </span>
+        {% endif %}
+      <table class="edit-ch">
+        {{ form.as_table }}
+      </table>
+    <br>
+    <p>
+        <input type="submit" value="登録する" />
+    </p>
+  </form>
+{% endblock %}

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
 
     # Own Apps
     'weather.apps.WeatherConfig',
+    'channel.apps.ChannelConfig',
 ]
 
 MIDDLEWARE = [
@@ -174,6 +175,11 @@ LOGGING = {
     },
     'loggers': {
         'weather': {
+            'handlers': ['console'],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+        'channel': {
             'handlers': ['console'],
             'propagate': True,
             'level': 'DEBUG',

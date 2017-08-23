@@ -56,7 +56,7 @@ class ChannelEditForm(forms.ModelForm):
 
 class AreaRegistrationForm(forms.ModelForm):
     """
-    チャンネル変更用のフォーム
+    地域登録用のフォーム
     """
     class Meta:
         model = Area

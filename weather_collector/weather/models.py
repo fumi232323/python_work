@@ -36,13 +36,14 @@ class Channel(models.Model):
     )
 
     CHANNEL_YAHOO = 0
-    CHANNEL_WEATHERNEWS = 1
-    CHANNEL_TENKIJP = 2
+    CHANNEL_TENKIJP = 1
+    # CHANNEL_WEATHERNEWS = 2
+    
 
     CHANNEL_CHOICES = (
         (CHANNEL_YAHOO, 'Yahoo!天気'),
-        (CHANNEL_WEATHERNEWS, 'ウェザーニュース'),
         (CHANNEL_TENKIJP, '日本気象協会 tenki.jp'),
+        # (CHANNEL_WEATHERNEWS, 'ウェザーニュース'),
     )
 
     area = models.ForeignKey(Area, on_delete=models.CASCADE, )

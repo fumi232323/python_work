@@ -20,7 +20,7 @@ def factory_channel(**kwargs):
     data = {
         'name': Channel.CHANNEL_YAHOO,
         'weather_type': Channel.TYPE_WEEKLY,
-        'url': 'https://weather.yahoo.co.jp/weather/jp/11/4310/11222.html',
+        'url': 'https://weather.fumi.co.jp/weather/jp/11/2222/33333.html',
     }
     data.update(kwargs)
     if 'area' not in data:

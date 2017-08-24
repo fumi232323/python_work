@@ -2,45 +2,49 @@
 {% block title %}チャンネル登録確認{% endblock %}
 {% block content %}
 <h1>チャンネルを新規登録確認</h1>
-    <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="confirmed" value="1" />
-        {% for field in form %}
-            {{ field.as_hidden }}
-        {% endfor %}
-      
-        {% if error %}
-            <span class="errorlist">
-                {{ error }}
-            </span>
-        {% endif %}
 
-      <table class="edit-ch">
-        <tbody>
-            <tr>
-                <th>地域:</th>
-                <td>{{ modified.area }}</td>
-            </tr>
-            <tr>
-                <th>チャンネル:</th>
-                <td>{{ channel_display }}</td>
-            </tr>
-            <tr>
-                <th>週間天気予報のURL:</th>
-                <td>
-                    <span class="small">{{ modified.weather_type_weekly_url }}</span>
-                </td>
-            </tr>
-            <tr>
-                <th>今日の天気予報のURL:</th>
-                <td><span class="small">{{ modified.weather_type_daily_url }}</span></td>
-            </tr>
-        </tbody>
-      </table>
-    <br>
-    <p>
-        <span><input type="submit" value="登録する"  name="register" /></span>&nbsp;&nbsp;&nbsp;
-        <span class="right"><input type="submit" value="戻る"  name="back" /></span>
-    </p>
-  </form>
+{% if messages %}
+  {% for message in messages %}
+      <p class="messages">
+        <span{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</span>
+      <p>
+  {% endfor %}
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+
+  <input type="hidden" name="confirmed" value="1" />
+  {% for field in form %}
+    {{ field.as_hidden }}
+  {% endfor %}
+
+  <table class="edit-ch">
+    <tbody>
+      <tr>
+        <th>地域:</th>
+        <td>{{ modified.area }}</td>
+      </tr>
+      <tr>
+        <th>チャンネル:</th>
+        <td>{{ channel_display }}</td>
+      </tr>
+      <tr>
+        <th>週間天気予報のURL:</th>
+        <td>
+          <span class="small">{{ modified.weather_type_weekly_url }}</span>
+        </td>
+      </tr>
+      <tr>
+        <th>今日の天気予報のURL:</th>
+        <td><span class="small">{{ modified.weather_type_daily_url }}</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <br>
+  <p>
+    <span><input type="submit" value="登録する"  name="register" /></span>&nbsp;&nbsp;&nbsp;
+    <span class="right"><input type="submit" value="戻る"  name="back" /></span>
+  </p>
+</form>
 {% endblock %}

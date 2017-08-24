@@ -2,34 +2,29 @@
 {% block title %}チャンネル変更{% endblock %}
 {% block content %}
 <h1>チャンネルを変更する</h1>
-  <form method="post" action="{% url 'channel:update' channel_id=channel.id %}">
-    {% csrf_token %}
-        {% if error %}
-            <span class="errorlist">
-                {{ error }}
-            </span>
-        {% endif %}
-      
-      <table class="edit-ch">
-        <tbody>
-            <tr>
-                <th>地域:</th>
-                <td>{{ channel.area }}</td>
-            </tr>
-            <tr>
-                <th>チャンネル:</th>
-                <td>{{ channel.get_name_display }}</td>
-            </tr>
-            <tr>
-                <th>予報タイプ:</th>
-                <td>{{ channel.get_weather_type_display }}</td>
-            </tr>
-            {{ form.as_table }}
-        </tbody>
-      </table>
-    <br>
-    <p>
-        <input type="submit" value="変更する" />
-    </p>
-  </form>
+<form method="post" action="{% url 'channel:update' channel_id=channel.id %}">
+  {% csrf_token %}
+
+  <table class="edit-ch">
+    <tbody>
+      <tr>
+        <th>地域:</th>
+        <td>{{ channel.area }}</td>
+      </tr>
+      <tr>
+        <th>チャンネル:</th>
+        <td>{{ channel.get_name_display }}</td>
+      </tr>
+      <tr>
+        <th>予報タイプ:</th>
+        <td>{{ channel.get_weather_type_display }}</td>
+      </tr>
+      {{ form.as_table }}
+    </tbody>
+  </table>
+  <br>
+  <p>
+    <input type="submit" value="変更する" />
+  </p>
+</form>
 {% endblock %}

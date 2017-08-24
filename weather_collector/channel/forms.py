@@ -18,27 +18,6 @@ class ChannelRegistrationForm(forms.Form):
     weather_type_weekly_url = forms.URLField(max_length=255, label='週間天気予報のURL')
     weather_type_daily_url = forms.URLField(max_length=255, label='今日の天気予報のURL')
 
-    def clean(self):
-        # 業務エラーチェック
-        # ここ（Form）でやってよいものか悩む・・・viewのほうがよいのかな・・・
-        cleaned_data = super(ChannelRegistrationForm, self).clean()
-        area = cleaned_data.get("area")
-        channel = cleaned_data.get("channel")
-
-        channels = Channel.objects.select_related(
-                'area'
-            ).filter(
-                area=area,
-                name=channel,
-            )
-        if channels:
-            raise forms.ValidationError(
-                "[{} - {}] チャンネルはすでに登録されています。".format(
-                    channels[0].area.name,
-                    channels[0].get_name_display(),
-                )
-            )
-
 
 class ChannelEditForm(forms.ModelForm):
     """

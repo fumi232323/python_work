@@ -17,14 +17,6 @@ class Channel(models.Model):
     天気予報サイトのURL
 
     各天気予報サイトのURLは、ひとつのAreaに紐づく。
-        # ちなみに、
-        # weathernews
-        # => https://weathernews.jp/onebox/35.864499/139.806766/temp=c&q=埼玉県越谷市
-        # 日本気象協会
-        # => https://tenki.jp/forecast/3/14/4310/11222/
-        # => https://tenki.jp/forecast/3/14/4310/11222/1hour.html
-        # Yahoo天気 => https://weather.yahoo.co.jp/weather/jp/11/4310/11222.html
-        # goo天気 => https://weather.goo.ne.jp/weather/address/11222/
     """
 
     TYPE_WEEKLY = 0
@@ -38,7 +30,6 @@ class Channel(models.Model):
     CHANNEL_YAHOO = 0
     CHANNEL_TENKIJP = 1
     # CHANNEL_WEATHERNEWS = 2
-    
 
     CHANNEL_CHOICES = (
         (CHANNEL_YAHOO, 'Yahoo!天気'),

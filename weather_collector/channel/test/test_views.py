@@ -133,6 +133,10 @@ class TestRegisterChannel(TestCase):
         self.assertEqual(channels[1].weather_type, Channel.TYPE_DAILY)
         self.assertEqual(channels[1].url, input_daily_url)
 
+        messages = list(res.wsgi_request._messages)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), 'チャンネル「草津町 * 日本気象協会 tenki.jp」を登録しました。')
+
     def test_post_duplicate_error(self):
         """
         【異常系】『チャンネル登録確認』画面
@@ -165,8 +169,10 @@ class TestRegisterChannel(TestCase):
 
         # 実行結果の確認
         self.assertTemplateUsed(res, 'channel/register.html')
-        self.assertFalse(res.context['form'].is_valid())
-        self.assertContains(res, '[草津町 - 日本気象協会 tenki.jp] チャンネルはすでに登録されています。')
+        self.assertTrue(res.context['form'].is_valid())
+        msgs = list(res.context['messages'])
+        self.assertEqual(len(msgs), 1)
+        self.assertEqual(str(msgs[0]), 'チャンネル「草津町 * 日本気象協会 tenki.jp」はすでに登録されています。')
         self.assertEqual(Channel.objects.count(), 1)
         channels = Channel.objects.select_related(
                     'area'

@@ -1,5 +1,6 @@
 from django.template.response import TemplateResponse
 from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
 
 import logging
 
@@ -7,7 +8,6 @@ from weather.models import Channel
 from .forms import ChannelRegistrationForm, ChannelEditForm, AreaRegistrationForm
 
 # TODO:
-#   * 登録完了とかのインフォメーションメッセージを表示できるようにする。
 #   * form、modelのテスト書く
 #   * 疑問は後でとりまとめて誰かに聞いてみよう
 #    * フォームで業務的なエラーチェックしていいの？重複するチャンネルは登録できないの件
@@ -42,6 +42,24 @@ def channel_list(request):
                             )
 
 
+def _is_duplicate_channels(form_cleaned_data):
+    """
+    重複するチャンネルは登録できないチェック
+    """
+    area = form_cleaned_data['area']
+    channel = form_cleaned_data['channel']
+
+    channels = Channel.objects.select_related(
+          'area'
+      ).filter(
+          area=area,
+          name=channel,
+      )
+    if channels:
+        return True
+    return False
+
+
 def register_channel(request):
     """
     チャンネルを新規登録する
@@ -52,6 +70,30 @@ def register_channel(request):
         form = ChannelRegistrationForm(data=request.POST)
 
         if form.is_valid():
+
+            if _is_duplicate_channels(form.cleaned_data):
+                messages.error(
+                    request,
+                    'チャンネル「{} * {}」はすでに登録されています。'.format(
+                        form.cleaned_data['area'],
+                        Channel.CHANNEL_CHOICES[int(form.cleaned_data['channel'])][1]
+                    )
+                )
+                logger.info(
+                    'Duplicate channels "Area:%s - Channel:%s".',
+                    form.cleaned_data['area'].id,
+                    form.cleaned_data['channel']
+                )
+                logger.info('Response template "%s".', 'channel/register.html')
+                logger.info('***** Ended %s. *****', 'register_channel')
+                return TemplateResponse(
+                                            request,
+                                            'channel/register.html',
+                                            {
+                                                'form': form,
+                                            }
+                                        )
+
             # 確認画面からのPOSTの場合、チャンネルを登録する。
             if 'confirmed' in request.POST and request.POST['confirmed'] == '1':
                 # 「登録する」ボタン押下時
@@ -72,12 +114,19 @@ def register_channel(request):
                         url=form.cleaned_data['weather_type_daily_url'],
                     )
 
+                    messages.info(
+                        request,
+                        'チャンネル「{} * {}」を登録しました。'.format(
+                            form.cleaned_data['area'],
+                            Channel.CHANNEL_CHOICES[int(form.cleaned_data['channel'])][1]
+                        )
+                    )
                     logger.info('Registered to Channel.')
                     logger.info('Redirect "%s".', 'channel:list')
                     logger.info('***** Ended %s. *****', 'register_channel')
                     return redirect('channel:list')
                 else:
-                    # 「戻る」ボタン押下時は入力画面へ戻る
+                    # 「戻る」ボタン押下時。入力画面へ戻る。
                     logger.info('"back" was requested.')
             else:
                 # 入力画面からのPOSTの場合、確認画面を表示する。
@@ -99,7 +148,7 @@ def register_channel(request):
         else:
             logger.info('ValidationError "%s".', 'ChannelRegistrationForm')
     else:
-        # チャンネル登録画面を初期表示する
+        # チャンネル登録画面を表示する
         form = ChannelRegistrationForm()
 
     logger.info('Response template "%s".', 'channel/register.html')
@@ -127,6 +176,14 @@ def update_channel(request, channel_id):
         if form.is_valid():
             form.save()
 
+            messages.info(
+                request,
+                'チャンネル「{} * {} * {}」を変更しました。'.format(
+                    channel.area.name,
+                    channel.get_name_display(),
+                    channel.get_weather_type_display(),
+                )
+            )
             logger.info('Updated to Channel.')
             logger.info('Redirect "%s".', 'channel:list')
             logger.info('***** Ended %s. *****', 'update_channel')
@@ -164,6 +221,7 @@ def delete_channel(request, channel_id):
                             name=channel.name,
                         ).delete()
 
+    messages.info(request, 'チャンネル「{} * {}」を削除しました。'.format(channel.area.name, channel.get_name_display()))
     logger.info('Deleted to Channel: "%s - %s"', channel.area, channel.get_name_display())
     logger.info('Redirect "%s".', 'channel:list')
     logger.info('***** Ended %s. *****', 'delete_channel')
@@ -182,6 +240,7 @@ def register_area(request):
         if form.is_valid():
             form.save()
 
+            messages.info(request, '地域「{}」を登録しました。'.format(form.cleaned_data['name']))
             logger.info('Registed to Area.')
             logger.info('Redirect "%s".', 'channel:register')
             logger.info('***** Ended %s. *****', 'register_area')

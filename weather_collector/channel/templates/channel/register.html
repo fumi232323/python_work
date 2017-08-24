@@ -1,25 +1,27 @@
 {% extends 'base.html' %}
 {% block title %}チャンネル登録{% endblock %}
 {% block content %}
-<h1>チャンネルを新規登録</h1>
-    <form method="post">
-        {% csrf_token %}
-        {% if error %}
-            <span class="errorlist">
-                {{ error }}
-            </span>
-        {% endif %}
 
-        <table class="edit-ch">
-            {{ form.as_table }}
-        </table>
-        <br>
-        <p>
-            <input type="submit" value="確認する" />
-            <a href="{% url 'channel:area' %}" class="button-orange right">地域を登録する</a>
-        </p>
-        <p>
-            
-        </p>
-    </form>
+<h1>チャンネルを新規登録</h1>
+
+{% if messages %}
+  {% for message in messages %}
+      <p class="messages">
+        <span{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</span>
+      <p>
+  {% endfor %}
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+
+  <table class="edit-ch">
+      {{ form.as_table }}
+  </table>
+  <br>
+  <p>
+      <input type="submit" value="確認する" />
+      <a href="{% url 'channel:area' %}" class="button-orange right">地域を登録する</a>
+  </p>
+</form>
 {% endblock %}

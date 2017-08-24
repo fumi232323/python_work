@@ -4,18 +4,13 @@
 <h1>地域を登録する</h1>
   <form method="post">
     {% csrf_token %}
-        {% if error %}
-            <span class="errorlist">
-                {{ error }}
-            </span>
-        {% endif %}
-      
-      <table class="edit-ch">
-            {{ form.as_table }}
-      </table>
+
+    <table class="edit-ch">
+      {{ form.as_table }}
+    </table>
     <br>
     <p>
-        <input type="submit" value="登録する" />
+      <input type="submit" value="登録する" />
     </p>
   </form>
 {% endblock %}

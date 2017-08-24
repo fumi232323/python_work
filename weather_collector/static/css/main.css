@@ -97,13 +97,25 @@ h2 {
     border-bottom: solid 2px #f98e5b;
 }
 
+/* messages */
 .errorlist {
     color: #e64040;
-    font-size: 24px;
-    width: 100%;
-    margin-right: auto;
 }
 
+.error {
+    color: #e64040;
+    font-size: 24px;
+}
+
+.warning {
+    color: #e64040;
+    font-size: 24px;
+}
+
+.info {
+    color: #f98e5b;
+    font-size: 24px;
+}
 
 /* Base Classes */
 

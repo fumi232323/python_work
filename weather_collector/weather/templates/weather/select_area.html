@@ -2,19 +2,14 @@
 {% block title %}地域を選択{% endblock %}
 {% block content %}
 <h1>地域を選択</h1>
-  <form method="post">
+<form method="post">
   {% csrf_token %}
-    {% if error %}
-        <span class="errorlist">
-            {{ error }}
-        </span>
-    {% endif %}
-    {{ form.as_p }}
-    <p>
-        <input type="submit" value="天気予報を取得" name="scrapy_weather" />
-    </p>
-    <p>
-        <input type="submit" value="週間天気予報を表示" name="display_weekly" />
-    </p>
-  </form>
+  {{ form.as_p }}
+  <p>
+      <input type="submit" value="天気予報を取得" name="scrapy_weather" />
+  </p>
+  <p>
+      <input type="submit" value="週間天気予報を表示" name="display_weekly" />
+  </p>
+</form>
 {% endblock %}

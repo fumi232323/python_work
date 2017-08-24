@@ -1,5 +1,6 @@
 from django.template.response import TemplateResponse
 from django.shortcuts import redirect  # , get_object_or_404
+from django.contrib import messages
 
 import logging
 from datetime import date
@@ -9,9 +10,8 @@ from .forms import AreaChoiceForm
 from .import scrapyutils
 
 # TODO:
-#   * チャンネルが存在しない場合は、リターン。週間天気予報画面にチャンネル登録を促すメッセージを表示。
-#   メッセージフレームワークhttps://docs.djangoproject.com/ja/1.10/ref/contrib/messages/
 #   * テストの残りとエラー処理
+#   * if文のネストが深すぎる気がするので、リファクタリングする
 logger = logging.getLogger(__name__)
 
 
@@ -33,20 +33,25 @@ def weekly_weather(request, area_id):
                         )
 
     all_weekly_weather = {}
-    for channel in channels:
-        weekly_weather_per_channel = Weather.objects.filter(
-                            channel=channel.id,
-                            date__gte=today
-                        ).order_by(
-                            'channel_id',
-                            'date'
-                        ).extra(
-                            select={
-                                'daily_weather_count':
-                                'SELECT COUNT(*) FROM weather_hourlyweather WHERE weather_weather.id = weather_hourlyweather.date_id'
-                            },
-                        )
-        all_weekly_weather[channel.get_name_display()] = weekly_weather_per_channel
+    if not channels:
+        # チャンネルが存在しない場合は、週間天気予報画面にチャンネル登録を促すメッセージを表示。
+        messages.warning(request, 'チャンネルが登録されていません。')
+        logger.info('Channel was not registered.')
+    else:
+        for channel in channels:
+            weekly_weather_per_channel = Weather.objects.filter(
+                                channel=channel.id,
+                                date__gte=today
+                            ).order_by(
+                                'channel_id',
+                                'date'
+                            ).extra(
+                                select={
+                                    'daily_weather_count':
+                                    'SELECT COUNT(*) FROM weather_hourlyweather WHERE weather_weather.id = weather_hourlyweather.date_id'
+                                },
+                            )
+            all_weekly_weather[channel.get_name_display()] = weekly_weather_per_channel
 
     logger.info('Response template "%s".', 'weather/weekly.html')
     logger.info('***** Ended %s. *****', 'weekly_weather')
@@ -94,9 +99,10 @@ def select_area(request):
     """
     『お天気エリア選択』画面
 
-    POSTでアクセスされた場合  : 『お天気エリア選択』画面で選択した"Area"に紐づくすべての"Channel"の天気予報を取得し、
-                              DBへ登録する。
-    GETでアクセスされた場合   : 『お天気エリア選択』画面を表示する。
+    * POSTでアクセスされた場合
+     『お天気エリア選択』画面で選択した"Area"に紐づくすべての"Channel"の天気予報を取得し、DBへ登録する。
+    * GETでアクセスされた場合
+     『お天気エリア選択』画面を表示する。
     """
     logger.info('***** Started %s. *****', 'select_area')
     if request.method == 'POST':
@@ -115,16 +121,18 @@ def select_area(request):
                             ).order_by(
                                 'id'
                             )
-                # TODO: チャンネルが存在しない場合は、リターン。週間天気予報画面にチャンネル登録を促すメッセージを表示。
+                if not channels:
+                    # チャンネルが存在しない場合は、スクレイピングは行わない。
+                    logger.info('Channel was not registered.')
+                else:
+                    # 天気予報取得対象URL、CSV出力
+                    scrapyutils.output_target_urls_to_csv(channels)
 
-                # 天気予報取得対象URL、CSV出力
-                scrapyutils.output_target_urls_to_csv(channels)
+                    # weatherscrapy実行
+                    file_names = scrapyutils.execute_scrapy(channels)
 
-                # weatherscrapy実行
-                file_names = scrapyutils.execute_scrapy(channels)
-
-                # CSV出力された天気予報をDBへ登録する。
-                scrapyutils.register_scrapped_weather(area_id, file_names)
+                    # CSV出力された天気予報をDBへ登録する。
+                    scrapyutils.register_scrapped_weather(area_id, file_names)
 
             # 「天気予報を取得」ボタン、「週間天気予報を表示」ボタンともに週間天気予表示viewにリダイレクト
             logger.info('Redirect "%s".', 'weather:weekly')

@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}天気予報{% endblock %}
 {% block content %}
-  <h1>{{ weather.channel.area.name }}*:;;;:*{{ weather.date }}の天気予報</h1>
+  <h1>{{ weather.channel.area.name }}*:;;;:*{{ weather.date_display }}({{ weather.weekday_display }})の天気予報</h1>
   <h2>{{ weather.channel.get_name_display }}</h2>
   <table>
     <thead>
@@ -31,8 +31,9 @@
       {% endfor %}
     </tbody>
   </table>
+  <br>
   <p>
-    <a href="{% url 'weather:weekly' area_id=weather.channel.area.id %}">
+    <a href="{% url 'weather:weekly' area_id=weather.channel.area.id %}" class="button">
       {{ weather.channel.area.name }}の週間天気に戻る
     </a>
   </p>

@@ -1,5 +1,6 @@
 from django.test import TestCase
 import tempfile
+import csv
 import os
 from unittest import mock
 from datetime import datetime
@@ -11,15 +12,292 @@ from weather.models import Channel, Weather, HourlyWeather
 from weather import scrapyutils
 
 
+class TestOutputTargetUrlsToCsv(TestCase):
+    """
+    天気予報取得対象URLのCSV出力処理のテスト
+    """
+
+    @mock.patch('weather.scrapyutils._get_urls_file_dir')
+    def test_output_single(self, m):
+        """
+        【正常系】
+        チャンネルが1セットの場合
+        """
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area)
+        channel_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+
+        # URLファイル出力先を、一時ディレクトリにモックする
+        with tempfile.TemporaryDirectory() as dirpath:
+            m.return_value = dirpath
+
+            # テスト対象の実行
+            scrapyutils.output_target_urls_to_csv([channel_weekly, channel_daily])
+
+            # 週間天気予報用のURLファイルが出力されていること
+            weekly_csv_path = os.path.join(dirpath, 'yahoo_weekly_weather' + '.csv')
+            self.assertTrue(os.path.exists(weekly_csv_path))
+            with open(weekly_csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                list_reader = list(reader)
+                self.assertEqual(len(list_reader), 1)
+                self.assertEqual(list_reader[0][0], channel_weekly.url)
+
+            # 今日の天気予報用のURLファイルが出力されていること
+            daily_csv_path = os.path.join(dirpath, 'yahoo_daily_weather' + '.csv')
+            self.assertTrue(os.path.exists(daily_csv_path))
+            with open(daily_csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                list_reader = list(reader)
+                self.assertEqual(len(list_reader), 1)
+                self.assertEqual(list_reader[0][0], channel_daily.url)
+
+    @mock.patch('weather.scrapyutils._get_urls_file_dir')
+    def test_output_multiple(self, m):
+        """
+        【正常系】
+        チャンネル2セット以上の場合
+        """
+        area = testing.factory_area()
+        channel_ya_weekly = testing.factory_channel(area=area)
+        channel_ya_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+        channel_te_weekly = testing.factory_channel(area=area, name=Channel.CHANNEL_TENKIJP)
+        channel_te_daily = testing.factory_channel(
+            area=area,
+            name=Channel.CHANNEL_TENKIJP,
+            weather_type=Channel.TYPE_DAILY,
+        )
+
+        # URLファイル出力先を、一時ディレクトリでモックする
+        with tempfile.TemporaryDirectory() as dirpath:
+            m.return_value = dirpath
+
+            # テスト対象の実行
+            scrapyutils.output_target_urls_to_csv([
+                channel_ya_weekly,
+                channel_ya_daily,
+                channel_te_weekly,
+                channel_te_daily
+            ])
+
+            # YAHOOの週間天気予報用のURLファイルが出力されていること
+            weekly_csv_path = os.path.join(dirpath, 'yahoo_weekly_weather' + '.csv')
+            self.assertTrue(os.path.exists(weekly_csv_path))
+            with open(weekly_csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                list_reader = list(reader)
+                self.assertEqual(len(list_reader), 1)
+                self.assertEqual(list_reader[0][0], channel_ya_weekly.url)
+
+            # YAHOOの今日の天気予報用のURLファイルが出力されていること
+            daily_csv_path = os.path.join(dirpath, 'yahoo_daily_weather' + '.csv')
+            self.assertTrue(os.path.exists(daily_csv_path))
+            with open(daily_csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                list_reader = list(reader)
+                self.assertEqual(len(list_reader), 1)
+                self.assertEqual(list_reader[0][0], channel_ya_daily.url)
+
+            # 日本気象協会の週間天気予報用のURLファイルが出力されていること
+            weekly_csv_path = os.path.join(dirpath, 'tenkijp_weekly_weather' + '.csv')
+            self.assertTrue(os.path.exists(weekly_csv_path))
+            with open(weekly_csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                list_reader = list(reader)
+                self.assertEqual(len(list_reader), 1)
+                self.assertEqual(list_reader[0][0], channel_te_weekly.url)
+
+            # 日本気象協会の今日の天気予報用のURLファイルが出力されていること
+            daily_csv_path = os.path.join(dirpath, 'tenkijp_daily_weather' + '.csv')
+            self.assertTrue(os.path.exists(daily_csv_path))
+            with open(daily_csv_path, newline='', encoding='utf-8') as csvfile:
+                reader = csv.reader(csvfile)
+                list_reader = list(reader)
+                self.assertEqual(len(list_reader), 1)
+                self.assertEqual(list_reader[0][0], channel_te_daily.url)
+
+    @mock.patch('weather.scrapyutils._get_urls_file_dir')
+    def test_overwrite_existing_file(self, m):
+        """
+        【正常系】
+        既存のURLファイルを上書きすること
+        """
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area)
+        channel_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+
+        # URLファイル出力先を、一時ディレクトリにモックする
+        with tempfile.TemporaryDirectory() as dirpath:
+            m.return_value = dirpath
+
+            # すでにURLファイルが存在する場合
+            with tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir=dirpath,
+                                            suffix='.csv'
+                                        ) as tfile:
+
+                tfile.write(
+"""https://weather.fumi.co.jp/weather/jp/99/9999/99999.html
+"""
+                )
+                tfile.name = os.path.join(dirpath, 'yahoo_weekly_weather' + '.csv')
+                tfile.flush()
+
+                # テスト対象の実行
+                scrapyutils.output_target_urls_to_csv([channel_weekly, channel_daily])
+
+                # 週間天気予報用のURLファイルが出力されていること
+                weekly_csv_path = os.path.join(dirpath, 'yahoo_weekly_weather' + '.csv')
+                self.assertTrue(os.path.exists(weekly_csv_path))
+                with open(weekly_csv_path, newline='', encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
+                    list_reader = list(reader)
+                    self.assertEqual(len(list_reader), 1)
+                    self.assertEqual(list_reader[0][0], channel_weekly.url)
+
+                # 今日の天気予報用のURLファイルが出力されていること
+                daily_csv_path = os.path.join(dirpath, 'yahoo_daily_weather' + '.csv')
+                self.assertTrue(os.path.exists(daily_csv_path))
+                with open(daily_csv_path, newline='', encoding='utf-8') as csvfile:
+                    reader = csv.reader(csvfile)
+                    list_reader = list(reader)
+                    self.assertEqual(len(list_reader), 1)
+                    self.assertEqual(list_reader[0][0], channel_daily.url)
+
+    @mock.patch('weather.scrapyutils._get_urls_file_dir')
+    def test_OSError(self, m):
+        """
+        【異常系】
+        ファイルオープンに失敗した場合、OSError
+        """
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area)
+        channel_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+
+        # URLファイル出力先を、一時ディレクトリにモックする
+        with tempfile.TemporaryDirectory() as dirpath:
+            m.return_value = dirpath
+
+        with self.assertRaises(OSError):
+            # テスト対象の実行(出力対象ディレクトリが存在しない状態で実行)
+            scrapyutils.output_target_urls_to_csv([channel_weekly, channel_daily])
+
+
+class TestExecuteScrapy(TestCase):
+    """
+    weatherscrapy実行処理のテストクラス。
+    """
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils.subprocess.Popen')
+    def test_execute_scrapy_normal(self, mock_popen, mock_now):
+        """
+        【正常系】
+        scrapy呼び出しが正常終了した場合、命名規則に則ったCSVファイル名が返却されること。
+        """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        area = testing.factory_area()
+        channel_ya_weekly = testing.factory_channel(area=area)
+        channel_ya_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+        channel_te_weekly = testing.factory_channel(area=area, name=Channel.CHANNEL_TENKIJP)
+        channel_te_daily = testing.factory_channel(
+            area=area,
+            name=Channel.CHANNEL_TENKIJP,
+            weather_type=Channel.TYPE_DAILY,
+        )
+
+        # scrapyはmockで実行
+        actual_weather_file_names = scrapyutils.execute_scrapy([
+            channel_ya_weekly,
+            channel_ya_daily,
+            channel_te_weekly,
+            channel_te_daily
+        ])
+
+        # 命名規則に則ったCSVファイル名が返却されること
+        excepted_weather_file_names = {
+            Channel.TYPE_WEEKLY: [
+                'yahoo_weekly_weather_20170807110000000000',
+                'tenkijp_weekly_weather_20170807110000000000',
+            ],
+            Channel.TYPE_DAILY: [
+                'yahoo_daily_weather_20170807110000000000',
+                'tenkijp_daily_weather_20170807110000000000'
+            ],
+        }
+        self.assertEqual(actual_weather_file_names, excepted_weather_file_names)
+
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils.subprocess.Popen')
+    def test_execute_scrapy_OSError(self, mock_popen, mock_now):
+        """
+        【異常系】
+        scrapy呼び出しがOSErrorの場合。
+        例外が発生した呼び出しの分のCSVファイル名は返却しない。
+        """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+        mock_popen.side_effect = [OSError('Raised OSError!'), mock.DEFAULT]
+
+        area = testing.factory_area()
+        channel_ya_weekly = testing.factory_channel(area=area)
+        channel_ya_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+
+        # テスト対象の実行(scrapyはmockで実行)
+        actual_weather_file_names = scrapyutils.execute_scrapy([
+            channel_ya_weekly,
+            channel_ya_daily,
+        ])
+
+        # 例外の発生しなかった呼び出し分のCSVファイル名が返却されること
+        excepted_weather_file_names = {
+            Channel.TYPE_WEEKLY: [
+            ],
+            Channel.TYPE_DAILY: [
+                'yahoo_daily_weather_20170807110000000000',
+            ],
+        }
+        self.assertEqual(actual_weather_file_names, excepted_weather_file_names)
+
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils.subprocess.Popen')
+    def test_execute_scrapy_ValueError(self, mock_popen, mock_now):
+        """
+        【異常系】
+        scrapy呼び出しがValueErrorの場合。
+        例外が発生した呼び出しの分のCSVファイル名は返却しない。
+        """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+        mock_popen.side_effect = [mock.DEFAULT, ValueError('Raised ValueError!')]
+
+        area = testing.factory_area()
+        channel_ya_weekly = testing.factory_channel(area=area)
+        channel_ya_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+
+        # テスト対象の実行(scrapyはmockで実行)
+        actual_weather_file_names = scrapyutils.execute_scrapy([
+            channel_ya_weekly,
+            channel_ya_daily,
+        ])
+
+        # 例外の発生しなかった呼び出し分のCSVファイル名が返却されること
+        excepted_weather_file_names = {
+            Channel.TYPE_WEEKLY: [
+                'yahoo_weekly_weather_20170807110000000000',
+            ],
+            Channel.TYPE_DAILY: [
+            ],
+        }
+        self.assertEqual(actual_weather_file_names, excepted_weather_file_names)
+
+
 class TestRegisterScrappedWeather(TestCase):
     def test_register_weekly_weather(self):
         """
         【正常系】
         週間天気予報の登録テスト
-        今日明日の天気はscrapyしなかった場合。
-          * Channelに対象エリアのTYPE_DAILYレコードがなかった場合
-          * 今日明日の天気のscrapyに失敗し、お天気情報CSVが出力されなかった場合
-          など。
+        今日明日の天気のお天気情報CSVファイルがない場合。
         """
         # --- 準備
         # 各テーブルの既存データ作成
@@ -47,7 +325,12 @@ class TestRegisterScrappedWeather(TestCase):
 
             # 引数のファイル名辞書
             test_weather_file_name = os.path.basename(tfile.name).split('.')[0]
-            weather_file_names = {Channel.TYPE_WEEKLY: [test_weather_file_name]}
+            weekly_file_names = [test_weather_file_name]
+            daily_file_names = []
+            weather_file_names = {
+                Channel.TYPE_WEEKLY: weekly_file_names,
+                Channel.TYPE_DAILY: daily_file_names,
+            }
 
             # テスト対象の実行
             scrapyutils.register_scrapped_weather(area.id, weather_file_names)
@@ -85,11 +368,11 @@ class TestRegisterScrappedWeather(TestCase):
             self.assertEqual(registered_weathers[2].chance_of_rain, 30)
             self.assertEqual(registered_weathers[2].wind_speed, None)
 
-    @mock.patch('weather.scrapyutils.get_now')
+    @mock.patch('weather.scrapyutils._get_now')
     def test_register_weekly_and_daily_weather(self, m):
         """
         【正常系】
-        週間天気予報、今日明日の天気の登録テスト
+        週間天気予報、今日の天気予報の登録テスト
         weeklyファイルとdailyファイルがそれぞれひとつずつの場合。
         """
         # --- 準備
@@ -232,11 +515,11 @@ class TestRegisterScrappedWeather(TestCase):
             self.assertEqual(reg_hourlyweathers[5].time.isoformat(), '21:00:00')
             self.assertEqual(reg_hourlyweathers[5].weather, '曇り')
 
-    @mock.patch('weather.scrapyutils.get_now')
+    @mock.patch('weather.scrapyutils._get_now')
     def test_register_multiple_weather_files(self, m):
         """
         【正常系】
-        週間天気予報、今日明日の天気の登録テスト
+        週間天気予報、今日の天気予報の登録テスト
         weeklyファイルとdailyファイルがそれぞれ複数の場合。
         """
         # --- 準備
@@ -528,3 +811,97 @@ class TestRegisterScrappedWeather(TestCase):
             self.assertEqual(reg_hourlyweathers[54].date.date.isoformat(), '2017-08-09')
             self.assertEqual(reg_hourlyweathers[54].time.isoformat(), '01:00:00')
             # ※以下省略
+
+    @mock.patch('weather.scrapyutils._get_now')
+    def test_register_containing_hyphens(self, m):
+        """
+        【正常系】
+        週間天気予報、今日の天気予報の登録テスト
+        天気予報部分が「---」の行はDB登録する必要がないので、スキップ。
+        """
+        # --- 準備
+        # 各テーブルの既存データ作成
+        area = testing.factory_area()
+        channel = testing.factory_channel(area=area, id=10)
+        weather = testing.factory_weather(channel=channel)
+        hourlyweather = testing.factory_hourlyweather(date=weather)
+
+        # 一時ファイルの作成
+        with tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as tfile:
+
+            tfile.write(
+"""acquisition_date,chance_of_rain,channel,date,highest_temperatures,lowest_temperatures,weather,wind_speed
+2017-08-09 21:16:35.245048,---,10,2017-08-11,29,23,曇時々雨,
+2017-08-09 21:16:35.245048,40,10,2017-08-12,30,24,曇り,
+"""
+            )
+            tfile.flush()
+
+            # 引数のファイル名辞書
+            test_weather_file_name = os.path.basename(tfile.name).split('.')[0]
+            weekly_file_names = [test_weather_file_name]
+            daily_file_names = []
+            weather_file_names = {
+                Channel.TYPE_WEEKLY: weekly_file_names,
+                Channel.TYPE_DAILY: daily_file_names,
+            }
+
+            # テスト対象の実行
+            scrapyutils.register_scrapped_weather(area.id, weather_file_names)
+
+            # --- DBの確認
+            # 既存データがdeleteされているか
+            self.assertEqual(Weather.objects.filter(id=weather.id).count(), 0)
+            self.assertEqual(HourlyWeather.objects.filter(id=hourlyweather.id).count(), 0)
+
+            # scrapyで取得したお天気は登録されているか
+            self.assertEqual(Weather.objects.count(), 1)
+            registered_weathers = Weather.objects.filter().order_by('id')
+            # 天気予報部分が「---」の行はDB登録されていないこと。
+            self.assertEqual(registered_weathers[0].channel, channel)
+            self.assertEqual(registered_weathers[0].date.isoformat(), '2017-08-12')
+            self.assertEqual(registered_weathers[0].weather, '曇り')
+            self.assertEqual(registered_weathers[0].highest_temperatures, 30)
+            self.assertEqual(registered_weathers[0].lowest_temperatures, 24)
+            self.assertEqual(registered_weathers[0].chance_of_rain, 40)
+            self.assertEqual(registered_weathers[0].wind_speed, None)
+
+    @mock.patch('weather.scrapyutils._get_now')
+    def test_register_weekly_weather_not_in_weather_file_names(self, m):
+        """
+        【正常系】
+        お天気情報CSVファイル名リストの週間天気のファイル名リストが空の場合。
+        DB更新せず終了。
+        """
+        # --- 準備
+        # 各テーブルの既存データ作成
+        area = testing.factory_area()
+        channel = testing.factory_channel(area=area, id=10)
+        weather = testing.factory_weather(channel=channel)
+        hourlyweather = testing.factory_hourlyweather(date=weather)
+
+        # 引数のファイル名辞書
+        weekly_file_names = []
+        daily_file_names = ['test_weather_file_name']
+        weather_file_names = {
+            Channel.TYPE_WEEKLY: weekly_file_names,
+            Channel.TYPE_DAILY: daily_file_names,
+        }
+
+        # テスト対象の実行
+        scrapyutils.register_scrapped_weather(area.id, weather_file_names)
+
+        # --- DBの確認
+        # 削除、登録されていないこと(実行前と同じ状態であること)
+        self.assertEqual(Weather.objects.count(), 1)
+        self.assertEqual(HourlyWeather.objects.count(), 1)
+
+        weathers = Weather.objects.filter().order_by('id')
+        self.assertEqual(weathers[0], weather)
+        hourlyWeathers = HourlyWeather.objects.filter().order_by('id')
+        self.assertEqual(hourlyWeathers[0], hourlyweather)

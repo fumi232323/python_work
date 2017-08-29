@@ -23,10 +23,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'x625(*8h$xohkqx7bpd)er9)n6w9jgh+f6&1*a26^rg%*!vvl_'
 
 # SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG = False
 DEBUG = True
 
+# ALLOWED_HOSTS = ['*']
 ALLOWED_HOSTS = []
-
 
 # Application definition
 
@@ -130,6 +131,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
@@ -153,6 +155,9 @@ LOGGING = {
          'require_debug_true': {
              '()': 'django.utils.log.RequireDebugTrue',
          },
+        # 'require_debug_false': {
+        #         '()': 'django.utils.log.RequireDebugFalse',
+        # }
     },
     'handlers': {
         'console': {
@@ -161,38 +166,38 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose'
         },
-        # 'file': {
-        #     'level': 'DEBUG',
-        #     'class': 'logging.FileHandler',
-        #     'filename': os.path.join(BASE_DIR, 'django.log'),
-        #     'formatter': 'verbose',
-        # },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR + '/log/', 'django.log'),
+            'formatter': 'verbose',
+        },
         # 'mail_admins': {
         #     'level': 'ERROR',
         #     'class': 'django.utils.log.AdminEmailHandler',
-        #     'filters': ['special']
+        #     'filters': ['require_debug_false']
         # }
     },
     'loggers': {
         'weather': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
             'propagate': True,
             'level': 'DEBUG',
         },
         'channel': {
-            'handlers': ['console'],
+            'handlers': ['console', 'file'],
+            'propagate': True,
+            'level': 'DEBUG',
+        },
+        'django': {
+            'handlers': ['console', 'file'],
             'propagate': True,
             'level': 'DEBUG',
         },
         # 'django.request': {
         #     'handlers': ['mail_admins'],
+        #     'propagate':False,
         #     'level': 'ERROR',
-        #     'propagate': False,
         # },
-        # 'myproject.custom': {
-        #     'handlers': ['console', 'mail_admins'],
-        #     'level': 'INFO',
-        #     'filters': ['special']
-        # }
     }
 }

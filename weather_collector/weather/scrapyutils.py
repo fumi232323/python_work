@@ -1,6 +1,7 @@
 from datetime import datetime
 import subprocess
 import csv
+import os
 import logging
 from decimal import Decimal
 
@@ -8,17 +9,47 @@ from .models import Area, Channel, Weather, HourlyWeather
 
 
 logger = logging.getLogger(__name__)
+
 # scrapyのスパイダー名
 SPIDER_NAMES = {
     # CHANNEL:(WEEKLY, DAILY)
     0: ('yahoo_weekly_weather', 'yahoo_daily_weather'),
-    1: ('weathernews_weekly_weather', 'weathernews_daily_weather'),
-    2: ('tenkijp_weekly_weather', 'tenkijp_daily_weather'),
+    1: ('tenkijp_weekly_weather', 'tenkijp_daily_weather'),
+    2: ('weathernews_weekly_weather', 'weathernews_daily_weather'),
 }
 # 天気予報取得対象URLのCSVファイル配置先
-urls_file_path_string = '../weatherscrapy/data/urls/{}.csv'
-# 天気予報サイトから取得した天気予報CSVファイル配置先
-weather_file_path_string = '../weatherscrapy/data/weather/{}.csv'
+URLS_FILE_DIR = '../weatherscrapy/data/urls/'
+# 天気予報サイトから取得したお天気情報CSVファイル配置先
+WEATHER_FILE_DIR = '../weatherscrapy/data/weather/'
+
+
+def _get_urls_file_dir():
+    return URLS_FILE_DIR
+
+
+def _get_urls_file_path(file_name):
+    """
+    天気予報取得対象URLのCSVファイルのパスを返す
+    """
+    return os.path.join(_get_urls_file_dir(), file_name + '.csv')
+
+
+def _get_weather_file_dir():
+    return WEATHER_FILE_DIR
+
+
+def _get_weather_file_path(file_name):
+    """
+    お天気情報のCSVファイルのパスを返す
+    """
+    return os.path.join(_get_weather_file_dir(), file_name + '.csv')
+
+
+def _get_spider_name(channel):
+    """
+    チャンネルに応じたスパイダー名を返す
+    """
+    return SPIDER_NAMES[channel.name][channel.weather_type]
 
 
 def output_target_urls_to_csv(channels):
@@ -26,13 +57,13 @@ def output_target_urls_to_csv(channels):
     天気予報取得対象URLのCSV出力処理。
     　※scrapyスパイダーが、ここで出力されたCSVファイルのURLを使用してスクレイピングする。
 
-    @param channels : QuerySet<Channel>。 Channelモデルのクエリセット。
+    @param channels : Channelモデルのリスト。
     """
-    logger.info('***** Started %s. *****', '__output_target_urls_to_csv')
+    logger.info('***** Started %s. *****', 'output_target_urls_to_csv')
 
     for channel in channels:
-        file_name = SPIDER_NAMES[channel.name][channel.weather_type]
-        urls_file_path = urls_file_path_string.format(file_name)
+        file_name = _get_spider_name(channel)
+        urls_file_path = _get_urls_file_path(file_name)
         with open(
                     urls_file_path,
                     'w', newline='',
@@ -44,7 +75,7 @@ def output_target_urls_to_csv(channels):
 
         logger.info('Written to: "%s".', urls_file_path)
 
-    logger.info('***** Ended %s. *****', '__output_target_urls_to_csv')
+    logger.info('***** Ended %s. *****', 'output_target_urls_to_csv')
 
 
 def execute_scrapy(channels):
@@ -52,14 +83,14 @@ def execute_scrapy(channels):
     weatherscrapy実行処理。
     指定された天気予報サイトから天気予報を取得し、CSV出力する。
 
-    @param channels : QuerySet<Channel>。 Channelモデルのクエリセット。
+    @param channels : Channelモデルのリスト。
     @return         : Dict{Channel.weather_type:[file_names]}。
-                      KeyにChannel.weather_type、Valueに出力した天気予報CSVファイル名(拡張子は不要)のリストを持つ辞書。
-                        例) {Channel.TYPE_WEEKLY:['abc', 'ddd']}
+                      * KeyにChannel.weather_type、
+                      * Valueに出力したお天気情報CSVファイル名(拡張子は不要)のリスト
+                      を持つ辞書。
+                        (例) {Channel.TYPE_WEEKLY:['abc', 'ddd']}
     """
-    logger.info('***** Started %s. *****', '__execute_scrapy')
-
-    cmd_string = 'scrapy crawl {spider} -a channel_id={channel_id} -a file_name_suffix={file_name_suffix}'
+    logger.info('***** Started %s. *****', 'execute_scrapy')
 
     weekly_file_names = []
     daily_file_names = []
@@ -68,39 +99,52 @@ def execute_scrapy(channels):
         Channel.TYPE_DAILY: daily_file_names,
     }
 
-    file_name_suffix = '_' + datetime.now().strftime('%Y%m%d%H%M%S%f')
+    file_name_suffix = '_' + _get_now().strftime('%Y%m%d%H%M%S%f')
 
     for channel in channels:
-        spider = SPIDER_NAMES[channel.name][channel.weather_type]
-        cmd = cmd_string.format(
-                                spider=spider,
-                                channel_id=channel.id,
-                                file_name_suffix=file_name_suffix
-                               ).split(' ')
 
+        spider = _get_spider_name(channel)
+        cmd = _get_scrapy_command(spider, channel.id, file_name_suffix)
         logger.info('Execute scrapy command: %s', cmd)
 
         try:
             proc = subprocess.Popen(cmd, cwd='../weatherscrapy')
-        except OSError as e:
-            logger.exception('Execute scrapy failed: %s', e)
-            # TODO: 共通エラー画面へ遷移
-        except ValueError:
-            logger.exception('Execute scrapy failed: %s', e)
-            # TODO: 共通エラー画面へ遷移
+        except OSError as oe:
+            logger.error('Execute scrapy failed: %s', oe)
+            # 実行できた分だけDB登録するため、ログ出力して処理継続
+            continue
+        except ValueError as ve:
+            logger.error('Execute scrapy failed: %s', ve)
+            # 実行できた分だけDB登録するため、ログ出力して処理継続
+            continue
         else:
             logger.info('Execute scrapy has succeeded.')
             weather_file_names[channel.weather_type].append(
                 spider + file_name_suffix
             )
 
-        # weatherscrapy実行完了をしばし待つ。
+        # weatherscrapy実行完了をしばし待つ。(お天気情報ファイル出力完了後にDB登録する必要があるため。)
         while proc.poll() is None:
             continue
 
     logger.debug('weather_file_names: %s', weather_file_names)
-    logger.info('***** Ended %s. *****', '__execute_scrapy')
+    logger.info('***** Ended %s. *****', 'execute_scrapy')
     return weather_file_names
+
+
+def _get_scrapy_command(spider, channel_id, file_name_suffix):
+    """
+    scrapy実行用のコマンドを作成する。
+    """
+    cmd_string = 'scrapy crawl {spider} -a channel_id={channel_id} -a file_name_suffix={file_name_suffix}'
+
+    cmd = cmd_string.format(
+                            spider=spider,
+                            channel_id=channel_id,
+                            file_name_suffix=file_name_suffix
+                           ).split(' ')
+
+    return cmd
 
 
 def register_scrapped_weather(area_id, weather_file_names):
@@ -118,14 +162,18 @@ def register_scrapped_weather(area_id, weather_file_names):
     """
     logger.info('***** Started %s. *****', 'register_scrapped_weather')
 
+    # 週間天気がなければ処理終了。
+    if len(weather_file_names[Channel.TYPE_WEEKLY]) == 0:
+        return
+
     # 登録前に、既存データはdeleteしておく。
     _delete_weather(area_id)
 
     # まずは、週間天気予報の登録。
     _register_to_weather(weather_file_names)
 
-    # 今日明日天気URLがなければリターン。
-    if Channel.TYPE_DAILY not in weather_file_names:
+    # 今日明日天気がなければ処理終了。
+    if len(weather_file_names[Channel.TYPE_DAILY]) == 0:
         return
 
     # 次に、今日明日天気予報の登録。
@@ -148,7 +196,7 @@ def _register_to_weather(weather_file_names):
     週間天気予報の登録処理。
     """
     for file_name in weather_file_names[Channel.TYPE_WEEKLY]:
-        file_path = weather_file_path_string.format(file_name)
+        file_path = _get_weather_file_path(file_name)
         created_count = 0
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
@@ -182,7 +230,7 @@ def _register_to_hourlyweather(weather_file_names):
     # 日本気象協会、goo天気・・・週間天気=>降水確率、今日天気=>降水確率
 
     for file_name in weather_file_names[Channel.TYPE_DAILY]:
-        file_path = weather_file_path_string.format(file_name)
+        file_path = _get_weather_file_path(file_name)
         created_count = 0
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
@@ -267,7 +315,7 @@ def _update_weather_close_current_time(weather, row, found_close_time):
     """
     current_row_datetime = datetime.strptime(row[3] + row[7], '%Y-%m-%d%H:%M:%S')
 
-    if (get_now() <= current_row_datetime) and (not(found_close_time)):
+    if (_get_now() <= current_row_datetime) and (not(found_close_time)):
         weather.weather = row[8]
         weather.wind_speed = row[10]
         weather.chance_of_rain = _get_chance_of_rain(row[1])
@@ -316,5 +364,5 @@ def _get_precipitation(row_precipitation):
     return precipitation
 
 
-def get_now():
+def _get_now():
     return datetime.now()

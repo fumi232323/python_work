@@ -10,9 +10,15 @@ from .forms import AreaChoiceForm
 from .import scrapyutils
 
 # TODO:
-#   * テストの残りとエラー処理
-#   * if文のネストが深すぎる気がするので、リファクタリングする
+#   * テストの残りとエラー処理、カバレッジもとっとく。
+#     ∟あとフォームとモデル
+# E501 line too longは無視している
+#   * やっぱり、例外の取り扱いをよく考えよう。捕まえて、ログ出して、URLファイルCSV出力のとこ共通エラー画面へ遷移させよう。
 logger = logging.getLogger(__name__)
+
+
+def get_today():
+    return date.today()
 
 
 def weekly_weather(request, area_id):
@@ -22,7 +28,7 @@ def weekly_weather(request, area_id):
     logger.info('***** Started %s. *****', 'weekly_weather')
 
     # 時刻は00:00:00で取得
-    today = date.today()
+    today = get_today()
 
     area = Area.objects.get(id=area_id)
     channels = Channel.objects.filter(

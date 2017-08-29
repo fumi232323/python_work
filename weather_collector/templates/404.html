@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}サーバーエラー{% endblock %}
+{% block content %}
+<h1>404エラーのHTMLを置き換えてみる</h1>
+<p>
+  <a class="button" href="{% url 'weather:select_area' %}">トップ画面へ戻る</a>
+</p>
+<p>
+  <img src="{% static 'img/error.JPG' %}" alt="困ったね！">
+</p>
+{% endblock %}
+{# DEBUG = Falseにすると、staticが読み込まれない・・・。後日調べる。 #}

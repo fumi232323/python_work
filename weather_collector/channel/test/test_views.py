@@ -253,6 +253,10 @@ class TestUpdateChannel(TestCase):
         self.assertEqual(channel.weather_type, Channel.TYPE_WEEKLY)
         self.assertEqual(channel.url, input_weekly_url)
 
+        messages = list(res.wsgi_request._messages)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), 'チャンネル「草津町 * Yahoo!天気 * 週間天気」を変更しました。')
+
     def test_post_ValidationError(self):
         """
         【異常系】『チャンネル変更』画面
@@ -327,6 +331,10 @@ class TestDeleteChannel(TestCase):
         self.assertRedirects(res, reverse('channel:list'))
         self.assertEqual(Channel.objects.count(), 0)
 
+        messages = list(res.wsgi_request._messages)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), 'チャンネル「草津町 * Yahoo!天気」を削除しました。')
+
     def test_get_nonexistence(self):
         """
         【異常系】『チャンネル一覧』画面
@@ -367,7 +375,12 @@ class TestDeleteChannel(TestCase):
         # 実行結果の確認
         self.assertRedirects(res, reverse('channel:list'))
         self.assertEqual(Channel.objects.count(), 0)
+        self.assertNotIn('草津町', res)
+        self.assertNotContains(res, 'Yahoo!天気', status_code=302)
 
+        messages = list(res.wsgi_request._messages)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), 'チャンネル「草津町 * Yahoo!天気」を削除しました。')
 
 class TestRegisterArea(TestCase):
     def _getTarget(self):
@@ -403,6 +416,10 @@ class TestRegisterArea(TestCase):
         self.assertEqual(Area.objects.count(), 1)
         area = Area.objects.get()
         self.assertEqual(area.name, '守谷市')
+
+        messages = list(res.wsgi_request._messages)
+        self.assertEqual(len(messages), 1)
+        self.assertEqual(str(messages[0]), '地域「守谷市」を登録しました。')
 
     def test_post_ValidationError(self):
         """

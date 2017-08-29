@@ -291,6 +291,100 @@ class TestExecuteScrapy(TestCase):
         }
         self.assertEqual(actual_weather_file_names, excepted_weather_file_names)
 
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils.subprocess.Popen')
+    def test_execute_scrapy_cmd_yw(self, mock_popen, mock_now):
+        """
+        【正常系】
+        scrapy呼び出しコマンドが正しいことを確認する。
+        YAHOO週間天気。
+        """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        area = testing.factory_area()
+        channel_ya_weekly = testing.factory_channel(area=area, id=1)
+        channel_ya_daily = testing.factory_channel(area=area, id=2, weather_type=Channel.TYPE_DAILY)
+
+        # テスト対象の実行(scrapyはmockで実行)
+        actual_weather_file_names = scrapyutils.execute_scrapy([
+            channel_ya_weekly,
+        ])
+
+        mock_popen.assert_called_with(
+            ['scrapy', 'crawl', 'yahoo_weekly_weather', '-a', 'channel_id=1', '-a', 'file_name_suffix=_20170807110000000000'], cwd='../weatherscrapy'
+        )
+
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils.subprocess.Popen')
+    def test_execute_scrapy_cmd_yd(self, mock_popen, mock_now):
+        """
+        【正常系】
+        scrapy呼び出しコマンドが正しいことを確認する。
+        YAHOO今日の天気。
+        """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        area = testing.factory_area()
+        channel_ya_daily = testing.factory_channel(area=area, id=2, weather_type=Channel.TYPE_DAILY)
+
+        # テスト対象の実行(scrapyはmockで実行)
+        actual_weather_file_names = scrapyutils.execute_scrapy([
+            channel_ya_daily,
+        ])
+
+        mock_popen.assert_called_with(
+            ['scrapy', 'crawl', 'yahoo_daily_weather', '-a', 'channel_id=2', '-a', 'file_name_suffix=_20170807110000000000'], cwd='../weatherscrapy'
+        )
+
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils.subprocess.Popen')
+    def test_execute_scrapy_cmd_tw(self, mock_popen, mock_now):
+        """
+        【正常系】
+        scrapy呼び出しコマンドが正しいことを確認する。
+        日本気象協会週間天気。
+        """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        area = testing.factory_area()
+        channel_te_weekly = testing.factory_channel(area=area, id=3, name=Channel.CHANNEL_TENKIJP)
+
+        # テスト対象の実行(scrapyはmockで実行)
+        actual_weather_file_names = scrapyutils.execute_scrapy([
+            channel_te_weekly,
+        ])
+
+        mock_popen.assert_called_with(
+            ['scrapy', 'crawl', 'tenkijp_weekly_weather', '-a', 'channel_id=3', '-a', 'file_name_suffix=_20170807110000000000'], cwd='../weatherscrapy'
+        )
+
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils.subprocess.Popen')
+    def test_execute_scrapy_cmd_tw(self, mock_popen, mock_now):
+        """
+        【正常系】
+        scrapy呼び出しコマンドが正しいことを確認する。
+        日本気象協会今日の天気。
+        """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        area = testing.factory_area()
+        channel_te_daily = testing.factory_channel(
+            area=area,
+            id=4,
+            name=Channel.CHANNEL_TENKIJP,
+            weather_type=Channel.TYPE_DAILY,
+        )
+
+        # テスト対象の実行(scrapyはmockで実行)
+        actual_weather_file_names = scrapyutils.execute_scrapy([
+            channel_te_daily,
+        ])
+
+        mock_popen.assert_called_with(
+            ['scrapy', 'crawl', 'tenkijp_daily_weather', '-a', 'channel_id=4', '-a', 'file_name_suffix=_20170807110000000000'], cwd='../weatherscrapy'
+        )
+
 
 class TestRegisterScrappedWeather(TestCase):
     def test_register_weekly_weather(self):
@@ -414,7 +508,7 @@ class TestRegisterScrappedWeather(TestCase):
 2017-08-09 21:16:42.516178,50,2,2017-08-07,82,0,27,21:00:00,曇り,東北東,3
 2017-08-09 21:16:42.516178,,2,2017-08-08,11,1,32,00:00:00,大雨,北西,1
 2017-08-09 21:16:42.516178,,2,2017-08-08,22,0,24,12:00:00,晴れ,西北西,2
-2017-08-09 21:16:42.516178,,2,2017-08-08,33,0,37,21:00:00,曇り,東北東,3
+2017-08-09 21:16:42.516178,,2,2017-08-08,33,,37,21:00:00,曇り,東北東,3
 """
             )
 
@@ -510,10 +604,13 @@ class TestRegisterScrappedWeather(TestCase):
             self.assertEqual(reg_hourlyweathers[4].date.date.isoformat(), '2017-08-08')
             self.assertEqual(reg_hourlyweathers[4].time.isoformat(), '12:00:00')
             self.assertEqual(reg_hourlyweathers[4].weather, '晴れ')
+            # ※以下省略
 
             self.assertEqual(reg_hourlyweathers[5].date.date.isoformat(), '2017-08-08')
             self.assertEqual(reg_hourlyweathers[5].time.isoformat(), '21:00:00')
             self.assertEqual(reg_hourlyweathers[5].weather, '曇り')
+            self.assertEqual(reg_hourlyweathers[5].precipitation , 999)
+            # ※以下省略
 
     @mock.patch('weather.scrapyutils._get_now')
     def test_register_multiple_weather_files(self, m):

@@ -84,9 +84,10 @@ class Weather(models.Model):
     def __str__(self):
         return str(self.channel) + '-' + self.date.strftime('%Y/%m/%d')
 
+    # Display Properties
+
     def date_display(self):
         return self.date.strftime('%m/%d')
-        # return self.date.strftime('%m/%d (%a)')
 
     def weekday_display(self):
         return self.WEEKDAY_JA[self.date.weekday()]
@@ -136,7 +137,7 @@ class HourlyWeather(models.Model):
                 self.time.strftime('%H/%M/%S')
 
     def chance_of_rain_display(self):
-        worthless_values = [999, '', None]
+        worthless_values = [999, None]
         if self.chance_of_rain in worthless_values:
             return('---')
         else:

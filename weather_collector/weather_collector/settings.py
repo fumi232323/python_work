@@ -201,3 +201,13 @@ LOGGING = {
         # },
     }
 }
+
+# django-nose, coverage configure
+# 参考: https://codelab.website/django-testcode/
+INSTALLED_APPS += ('django_nose',)
+TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
+NOSE_ARGS = [
+    '--with-coverage',  # coverage を取る
+    '--cover-html',  # coverage を html で cover/ に出力する
+    '--cover-package=weather, channel',  # 取得する対象アプリ名
+]

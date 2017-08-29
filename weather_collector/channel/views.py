@@ -7,12 +7,7 @@ import logging
 from weather.models import Channel
 from .forms import ChannelRegistrationForm, ChannelEditForm, AreaRegistrationForm
 
-# TODO:
-#   * form、modelのテスト書く
-#   * 疑問は後でとりまとめて誰かに聞いてみよう
-#    * テスト。戻るボタンで戻った先の入力画面でさっき入力した値が再現されてる確認をどこでどうやるの件
-#    * モデルフォームじゃないフォームのChoiceFieldに、未選択用の選択肢'---------'を足すのはあれでいいのか？
-#    * 確認画面にモデルフォームじゃないフォームのChoiceFieldのラベルを表示するのはあれでいいのか？
+
 logger = logging.getLogger(__name__)
 
 

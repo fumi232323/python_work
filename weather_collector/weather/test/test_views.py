@@ -5,7 +5,7 @@ from unittest import mock
 from datetime import date
 
 from weather import testing
-from weather.models import Area, Channel, Weather, HourlyWeather
+from weather.models import Channel, Weather, HourlyWeather
 
 
 class TestWeeklyWeather(TestCase):
@@ -237,7 +237,7 @@ class TestDailyWeather(TestCase):
         self.assertEqual(daily_weather[2], hourlyweather21)
 
 
-class TestsSelectArea(TestCase):
+class TestSelectArea(TestCase):
     def test_get(self):
         """
         【正常系】『お天気エリア選択』画面
@@ -250,7 +250,10 @@ class TestsSelectArea(TestCase):
         self.assertTemplateUsed(res, 'weather/select_area.html')
         self.assertIn('form', res.context)
 
-    def test_post(self):
+    @mock.patch('weather.scrapyutils.output_target_urls_to_csv')
+    @mock.patch('weather.scrapyutils.execute_scrapy')
+    @mock.patch('weather.scrapyutils.register_scrapped_weather')
+    def test_post(self,):
         """
         【正常系】『お天気エリア選択』画面
         「天気予報を取得」ボタンを押下時処理。
@@ -288,6 +291,7 @@ class TestsSelectArea(TestCase):
         # DB登録されないことを確認
         self.assertEqual(Weather.objects.count(), 0)
         self.assertEqual(HourlyWeather.objects.count(), 0)
+        pass
 
     def test_post_weekly_weather(self):
         """

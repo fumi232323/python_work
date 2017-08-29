@@ -124,6 +124,7 @@ def execute_scrapy(channels):
             )
 
         # weatherscrapy実行完了をしばし待つ。(お天気情報ファイル出力完了後にDB登録する必要があるため。)
+        # いらないかもしれない。テストの書き方がわからんし・・・。。
         while proc.poll() is None:
             continue
 

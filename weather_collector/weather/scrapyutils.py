@@ -21,6 +21,7 @@ SPIDER_NAMES = {
 URLS_FILE_DIR = '../weatherscrapy/data/urls/'
 # 天気予報サイトから取得したお天気情報CSVファイル配置先
 WEATHER_FILE_DIR = '../weatherscrapy/data/weather/'
+FILE_EXTENSION = '.csv'
 
 
 def _get_urls_file_dir():
@@ -31,7 +32,7 @@ def _get_urls_file_path(file_name):
     """
     天気予報取得対象URLのCSVファイルのパスを返す
     """
-    return os.path.join(_get_urls_file_dir(), file_name + '.csv')
+    return os.path.join(_get_urls_file_dir(), file_name + FILE_EXTENSION)
 
 
 def _get_weather_file_dir():
@@ -42,7 +43,7 @@ def _get_weather_file_path(file_name):
     """
     お天気情報のCSVファイルのパスを返す
     """
-    return os.path.join(_get_weather_file_dir(), file_name + '.csv')
+    return os.path.join(_get_weather_file_dir(), file_name + FILE_EXTENSION)
 
 
 def _get_spider_name(channel):
@@ -64,16 +65,25 @@ def output_target_urls_to_csv(channels):
     for channel in channels:
         file_name = _get_spider_name(channel)
         urls_file_path = _get_urls_file_path(file_name)
-        with open(
-                    urls_file_path,
-                    'w', newline='',
-                    encoding='utf-8'
-                 ) as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow([channel.url])
-            logger.debug('Written to csvfile: %s', channel.url)
+        try:
+            with open(
+                        urls_file_path,
+                        'w', newline='',
+                        encoding='utf-8'
+                     ) as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow([channel.url])
 
-        logger.info('Written to: "%s".', urls_file_path)
+        except OSError:
+            logger.error(
+                'Written to csvfile failed. urls_file_path: %s, channel_id: %s ',
+                urls_file_path,
+                channel.id)
+            raise
+
+        else:
+            logger.debug('Written to csvfile: %s', channel.url)
+            logger.info('Written to: "%s".', urls_file_path)
 
     logger.info('***** Ended %s. *****', 'output_target_urls_to_csv')
 
@@ -110,12 +120,12 @@ def execute_scrapy(channels):
         try:
             proc = subprocess.Popen(cmd, cwd='../weatherscrapy')
         except OSError as oe:
-            logger.error('Execute scrapy failed: %s', oe)
             # 実行できた分だけDB登録するため、ログ出力して処理継続
+            logger.error('Execute scrapy failed: %s', oe)
             continue
         except ValueError as ve:
-            logger.error('Execute scrapy failed: %s', ve)
             # 実行できた分だけDB登録するため、ログ出力して処理継続
+            logger.error('Execute scrapy failed: %s', ve)
             continue
         else:
             logger.info('Execute scrapy has succeeded.')
@@ -156,15 +166,18 @@ def register_scrapped_weather(area_id, weather_file_names):
     @param area_id  : int。 Areaモデルのid。選択した天気予報取得対象地域を表すモデルArea.id。
     @param weather_file_names
                     : Dict{Channel.weather_type:[file_names]}。
-                       * KeyにChannel.weather_type、
-                       * Valueに読み込み対象のお天気情報CSVファイル名(拡張子は不要)のリスト
-                      を持つ辞書。
+                       * Key -> Channel.weather_type、
+                       * Value -> 読み込み対象のお天気情報CSVファイル名(拡張子は不要)のリスト
+                      登録対象のお天気情報CSVファイル名の辞書。
                       例) {Channel.TYPE_WEEKLY:['abc', 'ddd']}
     """
     logger.info('***** Started %s. *****', 'register_scrapped_weather')
 
-    # 週間天気がなければ処理終了。
-    if len(weather_file_names[Channel.TYPE_WEEKLY]) == 0:
+    # 週間天気ファイル名リスト・今日明日天気ファイル名リストの両方がなければ処理終了。
+    if len(weather_file_names[Channel.TYPE_WEEKLY]) == 0 and \
+            len(weather_file_names[Channel.TYPE_DAILY]) == 0:
+        logger.info('We did not register because weather_file_names is empty.')
+        logger.info('***** Ended %s. *****', 'register_scrapped_weather')
         return
 
     # 登録前に、既存データはdeleteしておく。
@@ -172,10 +185,6 @@ def register_scrapped_weather(area_id, weather_file_names):
 
     # まずは、週間天気予報の登録。
     _register_to_weather(weather_file_names)
-
-    # 今日明日天気がなければ処理終了。
-    if len(weather_file_names[Channel.TYPE_DAILY]) == 0:
-        return
 
     # 次に、今日明日天気予報の登録。
     _register_to_hourlyweather(weather_file_names)
@@ -192,13 +201,37 @@ def _delete_weather(area_id):
     Weather.objects.filter(channel__in=channels).delete()
 
 
+def _is_useless(file_path):
+    """
+    ファイルが以下の場合Trueを返す。
+     * 存在しない
+     * アクセスできない
+     * 0バイト
+    """
+    try:
+        if os.path.getsize(file_path) == 0:
+            # 0バイトの場合
+            return True
+    except OSError:
+        # 存在しない、アクセスできない場合
+        return True
+
+    return False
+
+
 def _register_to_weather(weather_file_names):
     """
     週間天気予報の登録処理。
     """
     for file_name in weather_file_names[Channel.TYPE_WEEKLY]:
+
         file_path = _get_weather_file_path(file_name)
-        created_count = 0
+        if _is_useless(file_path):
+            # 無用なファイルはスキップ
+            logger.info('Skiped useless file: "%s".', file_path)
+            continue
+
+        created_count = 0  # <- log出力にしか使わない
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
@@ -231,8 +264,14 @@ def _register_to_hourlyweather(weather_file_names):
     # 日本気象協会、goo天気・・・週間天気=>降水確率、今日天気=>降水確率
 
     for file_name in weather_file_names[Channel.TYPE_DAILY]:
+
         file_path = _get_weather_file_path(file_name)
-        created_count = 0
+        if _is_useless(file_path):
+            # 無用なファイルはスキップ
+            logger.info('Skiped useless file: "%s".', file_path)
+            continue
+
+        created_count = 0  # <- log出力にしか使わない
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
@@ -247,7 +286,7 @@ def _register_to_hourlyweather(weather_file_names):
 
                 hourlyweather_channel = Channel.objects.get(id=row[2])  # row[2]=>Channel.id
 
-                # --- Weatherの登録 ---
+                # --- Weatherの追加登録 ---
                 weather, found_close_time = _add_weather_registration(
                     hourlyweather_channel,
                     row,

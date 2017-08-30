@@ -9,10 +9,7 @@ from .models import Area, Channel, Weather, HourlyWeather
 from .forms import AreaChoiceForm
 from .import scrapyutils
 
-# TODO:
-#   * TestsSelectAreaのテストの続き書く。チャンネルを新規登録するのバリデーションエラーのテスト書く。
-#   * flake8 E501 line too longは無視している
-#   * やっぱり、例外の取り扱いをよく考えよう。捕まえて、ログ出して、URLファイルCSV出力のとこ共通エラー画面へ遷移させよう。
+
 logger = logging.getLogger(__name__)
 
 

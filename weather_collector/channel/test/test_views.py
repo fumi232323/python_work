@@ -184,6 +184,79 @@ class TestRegisterChannel(TestCase):
         self.assertEqual(channels[0].weather_type, Channel.TYPE_WEEKLY)
         self.assertEqual(channels[0].url, 'https://weathernews.jp.test')
 
+    def test_post_ValidationError(self):
+        """
+        【異常系】『チャンネル登録』画面
+        バリデーションエラーの場合は、チャンネル登録画面を再表示する。
+        """
+        # データの準備
+        area = testing.factory_area()
+
+        input_weekly_url = 'https://aaa.jp/input_weekly_url=c&q=茨城県守谷市'
+        input_daily_url = ''
+
+        data = {
+            'area': area.id,
+            'channel': Channel.CHANNEL_TENKIJP,
+            'weather_type_weekly_url': input_weekly_url,
+            'weather_type_daily_url': input_daily_url,
+        }
+
+        # 対象機能の実行
+        res = self.client.post(
+            reverse('channel:register'),
+            data=data
+        )
+
+        # 実行結果の確認
+        self.assertTemplateUsed(res, 'channel/register.html')
+        self.assertFalse(res.context['form'].is_valid())
+        self.assertEqual(
+            res.context['form'].errors['weather_type_daily_url'],
+            ['このフィールドは必須です。']
+        )
+        self.assertEqual(res.context['form']['area'].data, str(area.id))
+        self.assertEqual(res.context['form']['channel'].data, str(Channel.CHANNEL_TENKIJP))
+        self.assertEqual(res.context['form']['weather_type_weekly_url'].data, input_weekly_url)
+        self.assertEqual(res.context['form']['weather_type_daily_url'].data, input_daily_url)
+
+    def test_post_confirmed_ValidationError(self):
+        """
+        【異常系】『チャンネル登録確認』画面
+        バリデーションエラーの場合は、チャンネル登録画面を再表示する。
+        """
+        # データの準備
+        area = testing.factory_area()
+
+        input_weekly_url = 'https://aaa.jp/input_weekly_url=c&q=茨城県守谷市'
+        input_daily_url = ''
+
+        res = self.client.post(
+            reverse('channel:register'),
+            data={
+                    'area': area.id,
+                    'channel': Channel.CHANNEL_TENKIJP,
+                    'weather_type_weekly_url': input_weekly_url,
+                    'weather_type_daily_url': input_daily_url,
+                    'confirmed': '1',
+                    'register': '登録する',
+                 }
+        )
+
+        # 実行結果の確認
+        self.assertTemplateUsed(res, 'channel/register.html')
+        self.assertFalse(res.context['form'].is_valid())
+        self.assertEqual(
+            res.context['form'].errors['weather_type_daily_url'],
+            ['このフィールドは必須です。']
+        )
+        self.assertEqual(res.context['form']['area'].data, str(area.id))
+        self.assertEqual(res.context['form']['channel'].data, str(Channel.CHANNEL_TENKIJP))
+        self.assertEqual(res.context['form']['weather_type_weekly_url'].data, input_weekly_url)
+        self.assertEqual(res.context['form']['weather_type_daily_url'].data, input_daily_url)
+
+        self.assertEqual(Channel.objects.count(), 0)
+
 
 class TestUpdateChannel(TestCase):
     def _getTarget(self):
@@ -381,6 +454,7 @@ class TestDeleteChannel(TestCase):
         messages = list(res.wsgi_request._messages)
         self.assertEqual(len(messages), 1)
         self.assertEqual(str(messages[0]), 'チャンネル「草津町 * Yahoo!天気」を削除しました。')
+
 
 class TestRegisterArea(TestCase):
     def _getTarget(self):

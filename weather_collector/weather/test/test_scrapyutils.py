@@ -360,7 +360,7 @@ class TestExecuteScrapy(TestCase):
 
     @mock.patch('weather.scrapyutils._get_now')
     @mock.patch('weather.scrapyutils.subprocess.Popen')
-    def test_execute_scrapy_cmd_tw(self, mock_popen, mock_now):
+    def test_execute_scrapy_cmd_td(self, mock_popen, mock_now):
         """
         【正常系】
         scrapy呼び出しコマンドが正しいことを確認する。
@@ -609,7 +609,7 @@ class TestRegisterScrappedWeather(TestCase):
             self.assertEqual(reg_hourlyweathers[5].date.date.isoformat(), '2017-08-08')
             self.assertEqual(reg_hourlyweathers[5].time.isoformat(), '21:00:00')
             self.assertEqual(reg_hourlyweathers[5].weather, '曇り')
-            self.assertEqual(reg_hourlyweathers[5].precipitation , 999)
+            self.assertEqual(reg_hourlyweathers[5].precipitation, 999)
             # ※以下省略
 
     @mock.patch('weather.scrapyutils._get_now')
@@ -972,7 +972,7 @@ class TestRegisterScrappedWeather(TestCase):
     def test_register_weekly_weather_not_in_weather_file_names(self, m):
         """
         【正常系】
-        お天気情報CSVファイル名リストの週間天気のファイル名リストが空の場合。
+        週間天気ファイル名リスト・今日明日天気ファイル名リストの両方が空の場合。
         DB更新せず終了。
         """
         # --- 準備
@@ -984,7 +984,7 @@ class TestRegisterScrappedWeather(TestCase):
 
         # 引数のファイル名辞書
         weekly_file_names = []
-        daily_file_names = ['test_weather_file_name']
+        daily_file_names = []
         weather_file_names = {
             Channel.TYPE_WEEKLY: weekly_file_names,
             Channel.TYPE_DAILY: daily_file_names,
@@ -997,8 +997,345 @@ class TestRegisterScrappedWeather(TestCase):
         # 削除、登録されていないこと(実行前と同じ状態であること)
         self.assertEqual(Weather.objects.count(), 1)
         self.assertEqual(HourlyWeather.objects.count(), 1)
-
         weathers = Weather.objects.filter().order_by('id')
         self.assertEqual(weathers[0], weather)
         hourlyWeathers = HourlyWeather.objects.filter().order_by('id')
         self.assertEqual(hourlyWeathers[0], hourlyweather)
+
+    @mock.patch('weather.scrapyutils._get_now')
+    def test_register_only_header(self, m):
+        """
+        【正常系】
+        お天気情報CSVファイルがヘッダー行のみの場合
+        DB登録されない。
+        """
+        # --- 準備
+        # 現在日時をモックに置き換え
+        m.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        # 各テーブルの既存データ作成
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area, id=1, weather_type=Channel.TYPE_WEEKLY)
+        channel_daily = testing.factory_channel(area=area, id=2, weather_type=Channel.TYPE_DAILY)
+        weather = testing.factory_weather(channel=channel_weekly)
+        hourlyweather = testing.factory_hourlyweather(channel=channel_daily, date=weather)
+
+        # 一時ファイルの作成
+        with tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as wfile, \
+            tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as dfile:
+
+            wfile.write(
+"""acquisition_date,chance_of_rain,channel,date,highest_temperatures,lowest_temperatures,weather,wind_speed
+"""
+            )
+            dfile.write(
+"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+"""
+            )
+            wfile.flush()
+            dfile.flush()
+
+            # 引数のファイル名辞書
+            test_weekly_file_name = os.path.basename(wfile.name).split('.')[0]
+            test_daily_file_name = os.path.basename(dfile.name).split('.')[0]
+            weather_file_names = {
+                                    Channel.TYPE_WEEKLY: [
+                                        test_weekly_file_name,
+                                    ],
+                                    Channel.TYPE_DAILY: [
+                                        test_daily_file_name,
+                                    ],
+                                 }
+
+            # テスト対象の実行
+            scrapyutils.register_scrapped_weather(area.id, weather_file_names)
+
+            # --- DBの確認
+            # 既存データがdeleteされているか
+            self.assertEqual(Weather.objects.filter(id=weather.id).count(), 0)
+            self.assertEqual(HourlyWeather.objects.filter(id=hourlyweather.id).count(), 0)
+
+            # 結果的に天気予報が登録されないこと。
+            self.assertEqual(Weather.objects.count(), 0)
+            self.assertEqual(HourlyWeather.objects.count(), 0)
+
+    @mock.patch('weather.scrapyutils._get_now')
+    def test_register_file_not_exist(self, m):
+        """
+        【正常系】
+        お天気情報CSVファイルが存在しない場合
+        当該ファイルの登録はスキップして後続処理を続ける。
+        """
+        m.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        # 各テーブルの既存データ作成
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area, id=1, weather_type=Channel.TYPE_WEEKLY)
+        channel_daily = testing.factory_channel(area=area, id=2, weather_type=Channel.TYPE_DAILY)
+        weather = testing.factory_weather(channel=channel_weekly)
+        hourlyweather = testing.factory_hourlyweather(channel=channel_daily, date=weather)
+
+        # 一時ファイルの作成
+        with tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as dfile:
+
+            dfile.write(
+"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+2017-08-09 21:16:42.516178,30,2,2017-08-07,50,0,36,00:00:00,晴れ,北西,1
+2017-08-09 21:16:42.516178,40,2,2017-08-07,60,1,32,12:00:00,弱雨,西北西,2
+2017-08-09 21:16:42.516178,50,2,2017-08-07,82,0,27,21:00:00,曇り,東北東,3
+2017-08-09 21:16:42.516178,,2,2017-08-08,11,1,32,00:00:00,大雨,北西,1
+2017-08-09 21:16:42.516178,,2,2017-08-08,22,0,24,12:00:00,晴れ,西北西,2
+2017-08-09 21:16:42.516178,,2,2017-08-08,33,,37,21:00:00,曇り,東北東,3
+"""
+            )
+
+            dfile.flush()
+
+            # 引数のファイル名辞書
+            weather_file_names = {
+                                    Channel.TYPE_WEEKLY: ['nonexist_w'],
+                                    Channel.TYPE_DAILY: ['nonexist_d'],
+                                 }
+
+            # テスト対象の実行
+            scrapyutils.register_scrapped_weather(area.id, weather_file_names)
+
+            # --- DBの確認
+            # 既存データがdeleteされているか
+            self.assertEqual(Weather.objects.filter(id=weather.id).count(), 0)
+            self.assertEqual(HourlyWeather.objects.filter(id=hourlyweather.id).count(), 0)
+
+            # 結果的に天気予報が登録されないこと。
+            self.assertEqual(Weather.objects.count(), 0)
+            self.assertEqual(HourlyWeather.objects.count(), 0)
+
+    @mock.patch('weather.scrapyutils._get_now')
+    def test_register_0byte_weekly(self, m):
+        """
+        【正常系】
+        お天気情報CSVファイルが空(0バイト)の場合
+        当該ファイルの登録はスキップして後続処理を続ける。
+        ※週間天気予報分
+        """
+        # --- 準備
+        # 現在日時をモックに置き換え
+        m.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        # 各テーブルの既存データ作成
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area, id=1, weather_type=Channel.TYPE_WEEKLY)
+        channel_daily = testing.factory_channel(area=area, id=2, weather_type=Channel.TYPE_DAILY)
+        weather = testing.factory_weather(channel=channel_weekly)
+        hourlyweather = testing.factory_hourlyweather(channel=channel_daily, date=weather)
+
+        # 一時ファイルの作成
+        with tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as wfile1, \
+            tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as wfile2:
+
+            wfile1.write('')
+            wfile2.write(
+"""acquisition_date,chance_of_rain,channel,date,highest_temperatures,lowest_temperatures,weather,wind_speed
+2017-08-09 21:16:35.245048,40,1,2017-08-09,30,24,曇り,
+2017-08-09 21:16:35.245048,30,1,2017-08-10,29,23,曇時々晴,
+2017-08-09 21:16:35.245048,50,1,2017-08-11,30,23,曇時々雨,
+"""
+            )
+
+            wfile1.flush()
+            wfile2.flush()
+
+            # 引数のファイル名辞書
+            test_weekly_file_name1 = os.path.basename(wfile1.name).split('.')[0]
+            test_weekly_file_name2 = os.path.basename(wfile2.name).split('.')[0]
+            weather_file_names = {
+                                    Channel.TYPE_WEEKLY: [
+                                        test_weekly_file_name1,
+                                        test_weekly_file_name2
+                                    ],
+                                    Channel.TYPE_DAILY: [],
+                                 }
+
+            # テスト対象の実行
+            scrapyutils.register_scrapped_weather(area.id, weather_file_names)
+
+            # --- DBの確認
+            # 既存データがdeleteされているか
+            self.assertEqual(Weather.objects.filter(id=weather.id).count(), 0)
+            self.assertEqual(HourlyWeather.objects.filter(id=hourlyweather.id).count(), 0)
+
+            # scrapyで取得した週間天気は登録されているか
+            self.assertEqual(Weather.objects.count(), 3)
+            reg_weathers = Weather.objects.filter().order_by('id')
+
+            self.assertEqual(reg_weathers[0].channel, channel_weekly)
+            self.assertEqual(reg_weathers[0].date.isoformat(), '2017-08-09')
+            self.assertEqual(reg_weathers[0].weather, '曇り')
+            self.assertEqual(reg_weathers[0].highest_temperatures, 30)
+            self.assertEqual(reg_weathers[0].lowest_temperatures, 24)
+            self.assertEqual(reg_weathers[0].chance_of_rain, 40)
+            self.assertEqual(reg_weathers[0].wind_speed, None)
+
+            self.assertEqual(reg_weathers[1].date.isoformat(), '2017-08-10')
+            self.assertEqual(reg_weathers[1].weather, '曇時々晴')
+
+            self.assertEqual(reg_weathers[2].date.isoformat(), '2017-08-11')
+            self.assertEqual(reg_weathers[2].weather, '曇時々雨')
+
+    @mock.patch('weather.scrapyutils._get_now')
+    def test_register_0byte_daily(self, m):
+        """
+        【正常系】
+        お天気情報CSVファイルが空(0バイト)の場合
+        当該ファイルの登録はスキップして後続処理を続ける。
+        ※今日の天気予報分
+        """
+        # --- 準備
+        # 現在日時をモックに置き換え
+        m.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
+
+        # 各テーブルの既存データ作成
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area, id=1, weather_type=Channel.TYPE_WEEKLY)
+        channel_daily = testing.factory_channel(area=area, id=2, weather_type=Channel.TYPE_DAILY)
+        weather = testing.factory_weather(channel=channel_weekly)
+        hourlyweather = testing.factory_hourlyweather(channel=channel_daily, date=weather)
+
+        # 一時ファイルの作成
+        with tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as dfile1, \
+            tempfile.NamedTemporaryFile(
+                                            mode='w',
+                                            encoding='utf-8',
+                                            dir='../weatherscrapy/data/weather/',
+                                            suffix='.csv'
+                                        ) as dfile2:
+
+            dfile1.write('')
+            dfile2.write(
+"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+2017-08-09 21:16:42.516178,30,2,2017-08-07,50,0,36,00:00:00,晴れ,北西,1
+2017-08-09 21:16:42.516178,40,2,2017-08-07,60,1,32,12:00:00,弱雨,西北西,2
+2017-08-09 21:16:42.516178,50,2,2017-08-07,82,0,27,21:00:00,曇り,東北東,3
+2017-08-09 21:16:42.516178,,2,2017-08-08,11,1,32,00:00:00,大雨,北西,1
+2017-08-09 21:16:42.516178,,2,2017-08-08,22,0,24,12:00:00,晴れ,西北西,2
+2017-08-09 21:16:42.516178,,2,2017-08-08,33,,37,21:00:00,曇り,東北東,3
+"""
+            )
+
+            dfile1.flush()
+            dfile2.flush()
+
+            # 引数のファイル名辞書
+            test_daily_file_name1 = os.path.basename(dfile1.name).split('.')[0]
+            test_daily_file_name2 = os.path.basename(dfile2.name).split('.')[0]
+            weather_file_names = {
+                                    Channel.TYPE_WEEKLY: [],
+                                    Channel.TYPE_DAILY: [
+                                        test_daily_file_name1,
+                                        test_daily_file_name2
+                                    ],
+                                 }
+
+            # テスト対象の実行
+            scrapyutils.register_scrapped_weather(area.id, weather_file_names)
+
+            # --- DBの確認
+            # 既存データがdeleteされているか
+            self.assertEqual(Weather.objects.filter(id=weather.id).count(), 0)
+            self.assertEqual(HourlyWeather.objects.filter(id=hourlyweather.id).count(), 0)
+
+            # scrapyで取得した今日明日天気から追加した週間天気は登録されているか
+            self.assertEqual(Weather.objects.count(), 2)
+            reg_weathers = Weather.objects.filter().order_by('id')
+
+            self.assertEqual(reg_weathers[0].channel, channel_weekly)
+            self.assertEqual(reg_weathers[0].date.isoformat(), '2017-08-07')
+            self.assertEqual(reg_weathers[0].weather, '弱雨')
+            self.assertEqual(reg_weathers[0].highest_temperatures, 36)
+            self.assertEqual(reg_weathers[0].lowest_temperatures, 27)
+            self.assertEqual(reg_weathers[0].chance_of_rain, 40)
+            self.assertEqual(reg_weathers[0].wind_speed, 2)
+
+            self.assertEqual(reg_weathers[1].channel, channel_weekly)
+            self.assertEqual(reg_weathers[1].date.isoformat(), '2017-08-08')
+            self.assertEqual(reg_weathers[1].weather, '大雨')
+            self.assertEqual(reg_weathers[1].highest_temperatures, 37)
+            self.assertEqual(reg_weathers[1].lowest_temperatures, 24)
+            self.assertEqual(reg_weathers[1].chance_of_rain, 999)
+            self.assertEqual(reg_weathers[1].wind_speed, 1)
+
+            # scrapyで取得した今日明日天気は登録されているか
+            self.assertEqual(HourlyWeather.objects.count(), 6)
+            reg_hourlyweathers = HourlyWeather.objects.filter().order_by('id')
+
+            self.assertEqual(reg_hourlyweathers[0].channel, channel_daily)
+            self.assertEqual(reg_hourlyweathers[0].date, reg_weathers[0])
+            self.assertEqual(reg_hourlyweathers[0].date.date.isoformat(), '2017-08-07')
+            self.assertEqual(reg_hourlyweathers[0].time.isoformat(), '00:00:00')
+            self.assertEqual(reg_hourlyweathers[0].weather, '晴れ')
+            self.assertEqual(reg_hourlyweathers[0].temperatures, 36)
+            self.assertEqual(reg_hourlyweathers[0].humidity, 50)
+            self.assertEqual(reg_hourlyweathers[0].precipitation, 0)
+            self.assertEqual(reg_hourlyweathers[0].chance_of_rain, 30)
+            self.assertEqual(reg_hourlyweathers[0].wind_direction, '北西')
+            self.assertEqual(reg_hourlyweathers[0].wind_speed, 1)
+
+            self.assertEqual(reg_hourlyweathers[1].date.date.isoformat(), '2017-08-07')
+            self.assertEqual(reg_hourlyweathers[1].time.isoformat(), '12:00:00')
+            self.assertEqual(reg_hourlyweathers[1].weather, '弱雨')
+
+            self.assertEqual(reg_hourlyweathers[2].date.date.isoformat(), '2017-08-07')
+            self.assertEqual(reg_hourlyweathers[2].time.isoformat(), '21:00:00')
+            self.assertEqual(reg_hourlyweathers[2].weather, '曇り')
+
+            self.assertEqual(reg_hourlyweathers[3].channel, channel_daily)
+            self.assertEqual(reg_hourlyweathers[3].date, reg_weathers[1])
+            self.assertEqual(reg_hourlyweathers[3].date.date.isoformat(), '2017-08-08')
+            self.assertEqual(reg_hourlyweathers[3].time.isoformat(), '00:00:00')
+            self.assertEqual(reg_hourlyweathers[3].weather, '大雨')
+            self.assertEqual(reg_hourlyweathers[3].temperatures, 32)
+            self.assertEqual(reg_hourlyweathers[3].humidity, 11)
+            self.assertEqual(reg_hourlyweathers[3].precipitation, 1)
+            self.assertEqual(reg_hourlyweathers[3].chance_of_rain, 999)
+            self.assertEqual(reg_hourlyweathers[3].wind_direction, '北西')
+            self.assertEqual(reg_hourlyweathers[3].wind_speed, 1)
+
+            self.assertEqual(reg_hourlyweathers[4].date.date.isoformat(), '2017-08-08')
+            self.assertEqual(reg_hourlyweathers[4].time.isoformat(), '12:00:00')
+            self.assertEqual(reg_hourlyweathers[4].weather, '晴れ')
+            # ※以下省略
+
+            self.assertEqual(reg_hourlyweathers[5].date.date.isoformat(), '2017-08-08')
+            self.assertEqual(reg_hourlyweathers[5].time.isoformat(), '21:00:00')
+            self.assertEqual(reg_hourlyweathers[5].weather, '曇り')
+            self.assertEqual(reg_hourlyweathers[5].precipitation, 999)
+            # ※以下省略

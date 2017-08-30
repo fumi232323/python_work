@@ -1,11 +1,14 @@
 from django.test import TestCase
 from django.core.urlresolvers import reverse
 
+import os
+import tempfile
 from unittest import mock
-from datetime import date
+from datetime import date, datetime
 
 from weather import testing
 from weather.models import Channel, Weather, HourlyWeather
+from weather import scrapyutils
 
 
 class TestWeeklyWeather(TestCase):
@@ -253,45 +256,84 @@ class TestSelectArea(TestCase):
     @mock.patch('weather.scrapyutils.output_target_urls_to_csv')
     @mock.patch('weather.scrapyutils.execute_scrapy')
     @mock.patch('weather.scrapyutils.register_scrapped_weather')
-    def test_post(self,):
+    def test_post(self, mock_register, mock_scrapy, mock_url):
         """
         【正常系】『お天気エリア選択』画面
         「天気予報を取得」ボタンを押下時処理。
         選択した地域の天気予報をスクレイピング&DB登録し、週間天気予報を表示する。
         """
-        # 天気予報取得対象URL、CSV出力
-        # weatherscrapy実行
-        # CSV出力された天気予報をDBへ登録する。
-        # は、mockを使う
-        pass
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area)
+        channel_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
 
-    def test_post_channel_does_not_exist(self):
+        res = self.client.post(
+            reverse('weather:select_area'),
+            data={
+                    'selected_area': area.id,
+                    'scrapy_weather': '天気予報を取得',
+                }
+        )
+
+        self.assertRedirects(res, reverse('weather:weekly', kwargs={'area_id': area.id}))
+
+    @mock.patch('weather.scrapyutils._get_now')
+    @mock.patch('weather.scrapyutils._get_urls_file_dir')
+    @mock.patch('weather.scrapyutils._get_weather_file_dir')
+    def test_post_channel_does_not_exist(
+        self,
+        mock_weather_file_dir,
+        mock_urls_file_dir,
+        mock_now
+    ):
         """
         【正常系】『お天気エリア選択』画面
         「天気予報を取得」ボタンを押下時処理。
         選択したエリアのチャンネルが存在しない場合は、スクレイピングは行わず、週間天気予報画面を表示する。
         """
+        mock_now.return_value = datetime(2017, 8, 7, 11, 00, 00, 000000)
         area1 = testing.factory_area(name='エリア１')
         area2 = testing.factory_area(name='エリア２')
         channel_weekly = testing.factory_channel(area=area2)
         channel_daily = testing.factory_channel(area=area2, weather_type=Channel.TYPE_DAILY)
 
-        res = self.client.post(
-            reverse('weather:select_area'),
-            data={
-                    'selected_area': area1.id,
-                    'scrapy_weather': '天気予報を取得',
-                }
-        )
+        # URLファイルとお天気情報ファイル出力先を、一時ディレクトリにモックする
+        with tempfile.TemporaryDirectory() as urls_dirpath, \
+                tempfile.TemporaryDirectory() as weather_dirpath:
 
-        self.assertRedirects(res, reverse('weather:weekly', kwargs={'area_id': area1.id}))
+            mock_urls_file_dir.return_value = urls_dirpath
+            mock_weather_file_dir.return_value = weather_dirpath
 
-        # TODO: urlのcsv出てないよね確認
-        # TODO: weatherのアプトプットファイル出てないよね確認
+            res = self.client.post(
+                reverse('weather:select_area'),
+                data={
+                        'selected_area': area1.id,
+                        'scrapy_weather': '天気予報を取得',
+                    }
+            )
+
+            self.assertRedirects(res, reverse('weather:weekly', kwargs={'area_id': area1.id}))
+
+            # URLファイルが出力されていないことを確認
+            w_urls_file_path = scrapyutils._get_urls_file_path('yahoo_weekly_weather')
+            d_urls_file_path = scrapyutils._get_urls_file_path('yahoo_daily_weather')
+            self.assertFalse(os.path.isfile(w_urls_file_path))
+            self.assertFalse(os.path.isfile(d_urls_file_path))
+
+            # お天気情報ファイルが出力されていないことを確認
+            w_weather_file_path = scrapyutils._get_weather_file_path(
+                'yahoo_weekly_weather_20170807110000000000'
+            )
+            d_weather_file_path = scrapyutils._get_weather_file_path(
+                'yahoo_daily_weather_20170807110000000000'
+            )
+            self.assertFalse(os.path.isfile(w_weather_file_path))
+            self.assertFalse(os.path.isfile(d_weather_file_path))
+
         # DB登録されないことを確認
         self.assertEqual(Weather.objects.count(), 0)
         self.assertEqual(HourlyWeather.objects.count(), 0)
-        pass
+
+        self.assertRedirects(res, reverse('weather:weekly', kwargs={'area_id': area1.id}))
 
     def test_post_weekly_weather(self):
         """
@@ -299,25 +341,19 @@ class TestSelectArea(TestCase):
         「週間天気予報を表示」ボタンを押下時処理。
         選択したエリアの週間天気予報画面を表示する。
         """
-        area1 = testing.factory_area(name='エリア１')
-        channel_weekly = testing.factory_channel(area=area1)
-        channel_daily = testing.factory_channel(area=area1, weather_type=Channel.TYPE_DAILY)
+        area = testing.factory_area(name='エリア１')
+        channel_weekly = testing.factory_channel(area=area)
+        channel_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
 
         res = self.client.post(
             reverse('weather:select_area'),
             data={
-                    'selected_area': area1.id,
+                    'selected_area': area.id,
                     'display_weekly': '週間天気予報を表示',
                 }
         )
 
-        self.assertRedirects(res, reverse('weather:weekly', kwargs={'area_id': area1.id}))
-        # scrapyutilsが呼び出されないことを確認する。
-        # TODO: urlのcsv出てないよね確認
-        # TODO: weatherのアプトプットファイル出てないよね確認
-        # DB登録されない
-        self.assertEqual(Weather.objects.count(), 0)
-        self.assertEqual(HourlyWeather.objects.count(), 0)
+        self.assertRedirects(res, reverse('weather:weekly', kwargs={'area_id': area.id}))
 
     def test_post_validationError(self):
         """
@@ -343,3 +379,29 @@ class TestSelectArea(TestCase):
             res.context['form'].errors['selected_area'],
             ['このフィールドは必須です。']
         )
+
+    @mock.patch('weather.scrapyutils._get_urls_file_dir')
+    @mock.patch('weather.scrapyutils.execute_scrapy')
+    @mock.patch('weather.scrapyutils.register_scrapped_weather')
+    def test_post_output_target_urls_to_csv_OSError(self, mock_register, mock_scrapy, mock_urls_file_dir):
+        """
+        【異常系】『お天気エリア選択』画面
+        天気予報取得対象URLのCSV出力処理呼び出しでOSError発生時は、500エラー。
+        """
+        area = testing.factory_area()
+        channel_weekly = testing.factory_channel(area=area)
+        channel_daily = testing.factory_channel(area=area, weather_type=Channel.TYPE_DAILY)
+
+        # URLファイル出力先を、一時ディレクトリにモックする
+        with tempfile.TemporaryDirectory() as dirpath:
+            mock_urls_file_dir.return_value = dirpath
+
+        with self.assertRaises(OSError):
+            res = self.client.post(
+                reverse('weather:select_area'),
+                data={
+                        'selected_area': area.id,
+                        'scrapy_weather': '天気予報を取得',
+                    }
+            )
+            self.assertTemplateUsed(res, '500.html')

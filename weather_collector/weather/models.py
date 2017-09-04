@@ -103,9 +103,8 @@ class HourlyWeather(models.Model):
     """
     n時間分の天気予報
 
-    各n時間分の天気予報はひとつのWeatherに紐付く。
+    n時間分の天気予報はひとつのWeatherに紐付く。
     """
-    # やっぱりchannelは必要なので、足す
     channel = models.ForeignKey(Channel, on_delete=models.CASCADE)
     date = models.ForeignKey(Weather, on_delete=models.CASCADE)
 

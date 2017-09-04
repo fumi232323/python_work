@@ -184,7 +184,7 @@ class TestDailyWeather(TestCase):
         self.assertTemplateUsed(res, 'weather/daily.html')
         self.assertEqual(res.context['weather'], weather11)
         # H1タイトル
-        self.assertContains(res, '草津町*:;;;:*08/11(金)の天気予報')
+        self.assertContains(res, '草津町&nbsp;08/11(金)の天気予報')
         # H2タイトル
         self.assertContains(res, 'Yahoo!天気')
         daily_weather = res.context['daily_weather']
@@ -230,7 +230,7 @@ class TestDailyWeather(TestCase):
         self.assertTemplateUsed(res, 'weather/daily.html')
         self.assertEqual(res.context['weather'], weather11)
         # H1タイトル
-        self.assertContains(res, '草津町*:;;;:*08/11(金)の天気予報')
+        self.assertContains(res, '草津町&nbsp;08/11(金)の天気予報')
         # H2タイトル
         self.assertContains(res, 'Yahoo!天気')
         daily_weather = res.context['daily_weather']

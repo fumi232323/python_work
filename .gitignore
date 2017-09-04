@@ -3,5 +3,5 @@ include/
 lib/
 pip-selfcheck.json
 weather_collector/cover/*
-weather_collector/.coverage/
+weather_collector/.coverage
 man/

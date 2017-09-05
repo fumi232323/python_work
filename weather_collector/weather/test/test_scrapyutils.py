@@ -933,7 +933,7 @@ class TestRegisterScrappedWeather(TestCase):
 
             tfile.write(
 """acquisition_date,chance_of_rain,channel,date,highest_temperatures,lowest_temperatures,weather,wind_speed
-2017-08-09 21:16:35.245048,---,10,2017-08-11,29,23,曇時々雨,
+2017-08-09 21:16:35.245048,---,10,2017-08-11,29,23,---,
 2017-08-09 21:16:35.245048,40,10,2017-08-12,30,24,曇り,
 """
             )

@@ -1,7 +1,8 @@
 bin/
 include/
 lib/
+man/
 pip-selfcheck.json
 weather_collector/cover/*
 weather_collector/.coverage
-man/
+weather_collector/log/django.log

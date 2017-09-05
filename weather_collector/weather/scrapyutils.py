@@ -203,7 +203,7 @@ def _delete_weather(area_id):
 
 def _is_useless(file_path):
     """
-    ファイルが以下の場合Trueを返す。
+    ファイルパスが以下の場合Trueを返す。
      * 存在しない
      * アクセスできない
      * 0バイト
@@ -219,36 +219,58 @@ def _is_useless(file_path):
     return False
 
 
+def _get_useful_file_paths(file_names):
+    """
+    DB登録すべきお天気情報CSVファイルパスをリストで返す
+    """
+    useful_files = []
+    for file_name in file_names:
+        file_path = _get_weather_file_path(file_name)
+        if _is_useless(file_path):
+            # 無用なファイルは登録しないので、返却しない
+            logger.info('Skiped useless file: "%s".', file_path)
+        else:
+            useful_files.append(file_path)
+    return useful_files
+
+
 def _register_to_weather(weather_file_names):
     """
     週間天気予報の登録処理。
     """
-    for file_name in weather_file_names[Channel.TYPE_WEEKLY]:
 
-        file_path = _get_weather_file_path(file_name)
-        if _is_useless(file_path):
-            # 無用なファイルはスキップ
-            logger.info('Skiped useless file: "%s".', file_path)
-            continue
+    # 週間天気予報CSVファイルのフィールド
+    fieldnames = [
+        'acquisition_date',
+        'chance_of_rain',
+        'channel_id',
+        'date',
+        'highest_temperatures',
+        'lowest_temperatures',
+        'weather',
+        'wind_speed'
+    ]
 
+    useful_file_paths = _get_useful_file_paths(weather_file_names[Channel.TYPE_WEEKLY])
+
+    for file_path in useful_file_paths:
         created_count = 0  # <- log出力にしか使わない
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
-            reader = csv.reader(csvfile)
+            reader = csv.DictReader(csvfile, fieldnames)
             next(reader)
             for row in reader:
                 # 天気予報部分が「---」の行はDB登録する必要がないので、スキップ。
-                if not row[1].isdigit():
+                if not row['chance_of_rain'].isdigit():
                     continue
-
                 Weather.objects.create(
-                    channel=Channel.objects.get(id=row[2]),
-                    date=row[3],
-                    weather=row[6],
-                    highest_temperatures=row[4],
-                    lowest_temperatures=row[5],
-                    chance_of_rain=row[1],
+                    channel=Channel.objects.get(id=row['channel_id']),
+                    date=row['date'],
+                    weather=row['weather'],
+                    highest_temperatures=row['highest_temperatures'],
+                    lowest_temperatures=row['lowest_temperatures'],
+                    chance_of_rain=row['chance_of_rain'],
                     wind_speed=None,
                 )
                 created_count += 1
@@ -263,28 +285,37 @@ def _register_to_hourlyweather(weather_file_names):
     # Yahoo天気、ウェザーニューズ・・・週間天気=>降水確率、今日天気=>降水量
     # 日本気象協会、goo天気・・・週間天気=>降水確率、今日天気=>降水確率
 
-    for file_name in weather_file_names[Channel.TYPE_DAILY]:
+    # 今日明日天気予報CSVファイルのフィールド
+    fieldnames = [
+        'acquisition_date',
+        'chance_of_rain',
+        'channel_id',
+        'date',
+        'humidity',
+        'precipitation',
+        'temperatures',
+        'time',
+        'weather',
+        'wind_direction',
+        'wind_speed'
+    ]
+    useful_file_paths = _get_useful_file_paths(weather_file_names[Channel.TYPE_DAILY])
 
-        file_path = _get_weather_file_path(file_name)
-        if _is_useless(file_path):
-            # 無用なファイルはスキップ
-            logger.info('Skiped useless file: "%s".', file_path)
-            continue
-
+    for file_path in useful_file_paths:
         created_count = 0  # <- log出力にしか使わない
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
-            reader = csv.reader(csvfile)
+            reader = csv.DictReader(csvfile, fieldnames)
             next(reader)  # ヘッダーレコードはスキップ
 
-            # 現在時刻に一番近いレコードを見つけた場合True。
+            # found_close_time: 現在時刻に一番近いレコードを見つけた場合True。
             # HourlyWeather用の天気予報データでWeatherを登録時、「今日の天気」は現在時刻に一番近い時刻の天気を登録するために必要。
             found_close_time = False
 
             for row in reader:
 
-                hourlyweather_channel = Channel.objects.get(id=row[2])  # row[2]=>Channel.id
+                hourlyweather_channel = Channel.objects.get(id=row['channel_id'])
 
                 # --- Weatherの追加登録 ---
                 weather, found_close_time = _add_weather_registration(
@@ -297,14 +328,14 @@ def _register_to_hourlyweather(weather_file_names):
                 HourlyWeather.objects.create(
                     channel=hourlyweather_channel,
                     date=weather,
-                    time=row[7],
-                    weather=row[8],
-                    temperatures=row[6],
-                    humidity=row[4],
-                    precipitation=_get_precipitation(row[5]),
-                    chance_of_rain=_get_chance_of_rain(row[1]),
-                    wind_direction=row[9],
-                    wind_speed=row[10],
+                    time=row['time'],
+                    weather=row['weather'],
+                    temperatures=row['temperatures'],
+                    humidity=row['humidity'],
+                    precipitation=_get_precipitation(row['precipitation']),
+                    chance_of_rain=_get_chance_of_rain(row['chance_of_rain']),
+                    wind_direction=row['wind_direction'],
+                    wind_speed=row['wind_speed'],
                 )
                 created_count += 1
 
@@ -324,20 +355,20 @@ def _add_weather_registration(hourlyweather_channel, row, found_close_time):
     # 一旦、0時(1件目)の天気予報をWeatherに登録する。
     weather, created = Weather.objects.get_or_create(
         channel=weather_channel,
-        date=row[3],
+        date=row['date'],
         defaults={
-            'date': row[3],
-            'weather': row[8],
-            'highest_temperatures': _get_rounded_temperatures(row[6]),
-            'lowest_temperatures': _get_rounded_temperatures(row[6]),
-            'chance_of_rain': _get_chance_of_rain(row[1]),
-            'wind_speed': row[10],
+            'date': row['date'],
+            'weather': row['weather'],
+            'highest_temperatures': _get_rounded_temperatures(row['temperatures']),
+            'lowest_temperatures': _get_rounded_temperatures(row['temperatures']),
+            'chance_of_rain': _get_chance_of_rain(row['chance_of_rain']),
+            'wind_speed': row['wind_speed'],
         },
     )
 
     # 必要に応じて、weatherを更新する。
     if created:
-        logger.info('added Weather: "%s".', str(row[3]),)
+        logger.info('added Weather: "%s".', str(row['date']),)
     else:
         found_close_time = _update_weather_close_current_time(weather, row, found_close_time)
         _update_temperatures_at_max_and_min(weather, row)
@@ -350,15 +381,15 @@ def _add_weather_registration(hourlyweather_channel, row, found_close_time):
 
 def _update_weather_close_current_time(weather, row, found_close_time):
     """
-    今日の天気に限り、最高気温、最低気温以外は現在時刻に一番近いレコードで更新する。
-    現在時刻に一番近いレコードを見つけた場合は、Trueを返す。
+    現在時刻に一番近いレコードを見つけた場合は、Weatherの天気・風速・降水確率を更新し、Trueを返す。
+    (今日の天気に限り、最高気温、最低気温以外は現在時刻に一番近いレコードで登録したいため。)
     """
-    current_row_datetime = datetime.strptime(row[3] + row[7], '%Y-%m-%d%H:%M:%S')
+    current_row_datetime = datetime.strptime(row['date'] + row['time'], '%Y-%m-%d%H:%M:%S')
 
     if (_get_now() <= current_row_datetime) and (not(found_close_time)):
-        weather.weather = row[8]
-        weather.wind_speed = row[10]
-        weather.chance_of_rain = _get_chance_of_rain(row[1])
+        weather.weather = row['weather']
+        weather.wind_speed = row['wind_speed']
+        weather.chance_of_rain = _get_chance_of_rain(row['chance_of_rain'])
         return True
 
     return found_close_time
@@ -368,7 +399,7 @@ def _update_temperatures_at_max_and_min(weather, row):
     """
     最高気温、最低気温は1日の内で最も高い気温と最も低い気温で更新する
     """
-    rounded_temperatures = _get_rounded_temperatures(row[6])
+    rounded_temperatures = _get_rounded_temperatures(row['temperatures'])
     if int(weather.highest_temperatures) < rounded_temperatures:
         weather.highest_temperatures = rounded_temperatures
     if int(weather.lowest_temperatures) > rounded_temperatures:

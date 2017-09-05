@@ -44,6 +44,7 @@ Scrapyを使用したスクレイピングアプリケーション。
 - 色々なパターンのテストを書いてみる(unittest.TestCase、django.test.TestCase)
     * モックを使う(unittest.mock)
     * 一時ファイルや一時ディレクトリを使う(tempfileモジュール)
+- カバレッジをとってみる
 - adminサイトを使ってみる(The Django admin site)
 - コードスタイルチェックをやってみる(flake8)  
 ※以下エラーは一旦無視しています  

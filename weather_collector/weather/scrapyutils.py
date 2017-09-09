@@ -17,11 +17,14 @@ SPIDER_NAMES = {
     1: ('tenkijp_weekly_weather', 'tenkijp_daily_weather'),
     2: ('weathernews_weekly_weather', 'weathernews_daily_weather'),
 }
+
+# scrapy連携ファイルの拡張子
+FILE_EXTENSION = '.csv'
+
 # 天気予報取得対象URLのCSVファイル配置先
 URLS_FILE_DIR = '../weatherscrapy/data/urls/'
 # 天気予報サイトから取得したお天気情報CSVファイル配置先
 WEATHER_FILE_DIR = '../weatherscrapy/data/weather/'
-FILE_EXTENSION = '.csv'
 
 
 def _get_urls_file_dir():
@@ -238,19 +241,6 @@ def _register_to_weather(weather_file_names):
     """
     週間天気予報の登録処理。
     """
-
-    # 週間天気予報CSVファイルのフィールド
-    fieldnames = [
-        'acquisition_date',
-        'chance_of_rain',
-        'channel_id',
-        'date',
-        'highest_temperatures',
-        'lowest_temperatures',
-        'weather',
-        'wind_speed'
-    ]
-
     useful_file_paths = _get_useful_file_paths(weather_file_names[Channel.TYPE_WEEKLY])
 
     for file_path in useful_file_paths:
@@ -258,14 +248,16 @@ def _register_to_weather(weather_file_names):
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
-            reader = csv.DictReader(csvfile, fieldnames)
-            next(reader)
+            reader = csv.DictReader(csvfile)
+
             for row in reader:
+                logger.debug('★')
+                logger.debug(row)
                 # 天気予報部分が「---」の行はDB登録する必要がないので、スキップ。
                 if not row['chance_of_rain'].isdigit():
                     continue
                 Weather.objects.create(
-                    channel=Channel.objects.get(id=row['channel_id']),
+                    channel=Channel.objects.get(id=row['channel']),
                     date=row['date'],
                     weather=row['weather'],
                     highest_temperatures=row['highest_temperatures'],
@@ -282,23 +274,6 @@ def _register_to_hourlyweather(weather_file_names):
     """
     今日明日天気予報の登録処理
     """
-    # Yahoo天気、ウェザーニューズ・・・週間天気=>降水確率、今日天気=>降水量
-    # 日本気象協会、goo天気・・・週間天気=>降水確率、今日天気=>降水確率
-
-    # 今日明日天気予報CSVファイルのフィールド
-    fieldnames = [
-        'acquisition_date',
-        'chance_of_rain',
-        'channel_id',
-        'date',
-        'humidity',
-        'precipitation',
-        'temperatures',
-        'time',
-        'weather',
-        'wind_direction',
-        'wind_speed'
-    ]
     useful_file_paths = _get_useful_file_paths(weather_file_names[Channel.TYPE_DAILY])
 
     for file_path in useful_file_paths:
@@ -306,8 +281,7 @@ def _register_to_hourlyweather(weather_file_names):
 
         with open(file_path, newline='', encoding='utf-8') as csvfile:
             logger.debug('Opened csvfile: %s', file_path)
-            reader = csv.DictReader(csvfile, fieldnames)
-            next(reader)  # ヘッダーレコードはスキップ
+            reader = csv.DictReader(csvfile)
 
             # found_close_time: 現在時刻に一番近いレコードを見つけた場合True。
             # HourlyWeather用の天気予報データでWeatherを登録時、「今日の天気」は現在時刻に一番近い時刻の天気を登録するために必要。
@@ -315,7 +289,7 @@ def _register_to_hourlyweather(weather_file_names):
 
             for row in reader:
 
-                hourlyweather_channel = Channel.objects.get(id=row['channel_id'])
+                hourlyweather_channel = Channel.objects.get(id=row['channel'])
 
                 # --- Weatherの追加登録 ---
                 weather, found_close_time = _add_weather_registration(
@@ -370,29 +344,30 @@ def _add_weather_registration(hourlyweather_channel, row, found_close_time):
     if created:
         logger.info('added Weather: "%s".', str(row['date']),)
     else:
-        found_close_time = _update_weather_close_current_time(weather, row, found_close_time)
+        # 項目ごとの更新条件に合致した場合は、Weatherを更新する。
+        if not found_close_time:
+            found_close_time = _update_weather_close_current_time(weather, row)
         _update_temperatures_at_max_and_min(weather, row)
-
-        # Weatherの変更を保存
-        weather.save()
 
     return weather, found_close_time
 
 
-def _update_weather_close_current_time(weather, row, found_close_time):
+def _update_weather_close_current_time(weather, row):
     """
     現在時刻に一番近いレコードを見つけた場合は、Weatherの天気・風速・降水確率を更新し、Trueを返す。
     (今日の天気に限り、最高気温、最低気温以外は現在時刻に一番近いレコードで登録したいため。)
     """
     current_row_datetime = datetime.strptime(row['date'] + row['time'], '%Y-%m-%d%H:%M:%S')
 
-    if (_get_now() <= current_row_datetime) and (not(found_close_time)):
+    if _get_now() <= current_row_datetime:
         weather.weather = row['weather']
         weather.wind_speed = row['wind_speed']
         weather.chance_of_rain = _get_chance_of_rain(row['chance_of_rain'])
+
+        weather.save()
         return True
 
-    return found_close_time
+    return False
 
 
 def _update_temperatures_at_max_and_min(weather, row):
@@ -402,8 +377,11 @@ def _update_temperatures_at_max_and_min(weather, row):
     rounded_temperatures = _get_rounded_temperatures(row['temperatures'])
     if int(weather.highest_temperatures) < rounded_temperatures:
         weather.highest_temperatures = rounded_temperatures
+        weather.save()
+
     if int(weather.lowest_temperatures) > rounded_temperatures:
         weather.lowest_temperatures = rounded_temperatures
+        weather.save()
 
 
 def _get_rounded_temperatures(str_temperatures):
@@ -415,10 +393,10 @@ def _get_rounded_temperatures(str_temperatures):
 
 def _get_chance_of_rain(row_chance_of_rain):
     """
-    降水確率が空の場合、999を返す
+    降水確率が空文字の場合、999を返す
     """
     if row_chance_of_rain == '':
-        chance_of_rain = 999  # 999は画面表示時に'---'に置換
+        chance_of_rain = 999  # 999は画面表示時に'---'に置換する
     else:
         chance_of_rain = row_chance_of_rain
     return chance_of_rain
@@ -429,7 +407,7 @@ def _get_precipitation(row_precipitation):
     降水量が空の場合、999を返す
     """
     if row_precipitation == '':
-        precipitation = 999  # 999は画面表示時に'---'に置換
+        precipitation = 999  # 999は画面表示時に'---'に置換する
     else:
         precipitation = row_precipitation
     return precipitation

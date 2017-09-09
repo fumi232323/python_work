@@ -502,7 +502,7 @@ class TestRegisterScrappedWeather(TestCase):
 """
             )
             dfile.write(
-"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+"""acquisition_date,chance_of_rain,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
 2017-08-09 21:16:42.516178,30,2,2017-08-07,50,0,36,00:00:00,晴れ,北西,1
 2017-08-09 21:16:42.516178,40,2,2017-08-07,60,1,32,12:00:00,弱雨,西北西,2
 2017-08-09 21:16:42.516178,50,2,2017-08-07,82,0,27,21:00:00,曇り,東北東,3
@@ -686,7 +686,7 @@ class TestRegisterScrappedWeather(TestCase):
 """
             )
             daily_file1.write(
-"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+"""acquisition_date,chance_of_rain,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
 2017-08-09 21:16:42.516178,,2,2017-08-07,40,1,36,00:00:00,晴れ,北西,1
 2017-08-09 21:16:42.516178,,2,2017-08-07,50,2,32,12:00:00,弱雨,西北西,2
 2017-08-09 21:16:42.516178,,2,2017-08-07,60,3,27,21:00:00,曇り,東北東,3
@@ -696,7 +696,7 @@ class TestRegisterScrappedWeather(TestCase):
 """
             )
             daily_file2.write(
-"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+"""acquisition_date,chance_of_rain,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
 2017-08-17 12:07:11.380377,10,4,2017-08-07,96,0,20.4,01:00:00,曇り,北北西,2
 2017-08-17 12:07:11.380377,10,4,2017-08-07,96,1,20.3,02:00:00,曇り,北北西,2
 2017-08-17 12:07:11.380377,10,4,2017-08-07,96,0,20.7,03:00:00,台風,北北西,2
@@ -1039,7 +1039,7 @@ class TestRegisterScrappedWeather(TestCase):
 """
             )
             dfile.write(
-"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+"""acquisition_date,chance_of_rain,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
 """
             )
             wfile.flush()
@@ -1094,7 +1094,7 @@ class TestRegisterScrappedWeather(TestCase):
                                         ) as dfile:
 
             dfile.write(
-"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+"""acquisition_date,chance_of_rain,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
 2017-08-09 21:16:42.516178,30,2,2017-08-07,50,0,36,00:00:00,晴れ,北西,1
 2017-08-09 21:16:42.516178,40,2,2017-08-07,60,1,32,12:00:00,弱雨,西北西,2
 2017-08-09 21:16:42.516178,50,2,2017-08-07,82,0,27,21:00:00,曇り,東北東,3
@@ -1241,7 +1241,7 @@ class TestRegisterScrappedWeather(TestCase):
 
             dfile1.write('')
             dfile2.write(
-"""acquisition_date,chance_of_rains,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
+"""acquisition_date,chance_of_rain,channel,date,humidity,precipitation,temperatures,time,weather,wind_direction,wind_speed
 2017-08-09 21:16:42.516178,30,2,2017-08-07,50,0,36,00:00:00,晴れ,北西,1
 2017-08-09 21:16:42.516178,40,2,2017-08-07,60,1,32,12:00:00,弱雨,西北西,2
 2017-08-09 21:16:42.516178,50,2,2017-08-07,82,0,27,21:00:00,曇り,東北東,3
